@@ -15,7 +15,7 @@ joblib==1.1.0
 scikit-image==0.19.3
 basicsr==1.4.2
 facexlib==0.3.0
-gradio
+gradio==3.23.0
 gfpgan
 av
 safetensors

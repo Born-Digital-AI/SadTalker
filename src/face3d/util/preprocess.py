@@ -29,12 +29,12 @@ def POS(xp, x):
 
     k, _, _, _ = np.linalg.lstsq(A, b)
 
-    R1 = k[0:3]
-    R2 = k[4:7]
-    sTx = k[3]
-    sTy = k[7]
+    R1 = k[0:3,0]
+    R2 = k[4:7,0]
+    sTx = k[3,0]
+    sTy = k[7,0]
     s = (np.linalg.norm(R1) + np.linalg.norm(R2))/2
-    t = np.stack([sTx, sTy], axis=0)
+    t = np.array([sTx, sTy])
 
     return t, s
     
