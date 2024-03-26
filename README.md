@@ -241,12 +241,12 @@ python inference.py --driven_audio <audio.wav> \
 
 ##### High Quality
 ```bash
-python inference.py --driven_audio ./examples/custom/Jiri.wav --source_image ./examples/custom/anita.png --result_dir ./examples/out --still --preprocess resize --enhancer gfpgan --size 512 --expression_scale 1.1
+python inference.py --driven_audio ./examples/custom/Jiri.wav --source_image ./examples/custom/anita.png --result_dir ./examples/out --still --preprocess resize --enhancer gfpgan --size 512 --batch_size 1 --expression_scale 1.1
 ```
 
 ##### Low Quality
 ```bash
-python inference.py --driven_audio ./examples/custom/Jiri.wav --source_image ./examples/custom/anita.png --result_dir ./examples/out --still --preprocess resize --expression_scale 1.1
+python inference.py --driven_audio ./examples/custom/Jiri.wav --source_image ./examples/custom/anita.png --result_dir ./examples/out --still --preprocess resize --batch_size 1 --expression_scale 1.1
 ```
 
 More examples and configuration and tips can be founded in the [ >>> best practice documents <<<](docs/best_practice.md).

@@ -1,6 +1,7 @@
 import os
 import cv2
 import yaml
+import uuid
 import numpy as np
 import warnings
 from skimage import img_as_ubyte
@@ -11,16 +12,15 @@ warnings.filterwarnings('ignore')
 
 import imageio
 import torch
-import torchvision
 
 
 from src.facerender.modules.keypoint_detector import HEEstimator, KPDetector
 from src.facerender.modules.mapping import MappingNet
 from src.facerender.modules.generator import OcclusionAwareGenerator, OcclusionAwareSPADEGenerator
-from src.facerender.modules.make_animation import make_animation 
+from src.facerender.modules.make_animation import make_animation, make_animation_rt
 
 from pydub import AudioSegment 
-from src.utils.face_enhancer import enhancer_generator_with_len, enhancer_list
+from src.utils.face_enhancer import enhancer_generator_with_len, enhancer_list, enhancer_single_img
 from src.utils.paste_pic import paste_pic
 from src.utils.videoio import save_video_with_watermark
 
@@ -254,4 +254,55 @@ class AnimateFromCoeff():
         os.remove(new_audio_path)
 
         return return_path
+
+    def generate_rt(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None, preprocess='crop', img_size=256):
+        print("RT Generation started")
+
+        source_image=x['source_image'].type(torch.FloatTensor)
+        source_semantics=x['source_semantics'].type(torch.FloatTensor)
+        target_semantics=x['target_semantics_list'].type(torch.FloatTensor)
+        source_image=source_image.to(self.device)
+        source_semantics=source_semantics.to(self.device)
+        target_semantics=target_semantics.to(self.device)
+        if 'yaw_c_seq' in x:
+            yaw_c_seq = x['yaw_c_seq'].type(torch.FloatTensor)
+            yaw_c_seq = x['yaw_c_seq'].to(self.device)
+        else:
+            yaw_c_seq = None
+        if 'pitch_c_seq' in x:
+            pitch_c_seq = x['pitch_c_seq'].type(torch.FloatTensor)
+            pitch_c_seq = x['pitch_c_seq'].to(self.device)
+        else:
+            pitch_c_seq = None
+        if 'roll_c_seq' in x:
+            roll_c_seq = x['roll_c_seq'].type(torch.FloatTensor)
+            roll_c_seq = x['roll_c_seq'].to(self.device)
+        else:
+            roll_c_seq = None
+
+        out_dir = f'./examples/out/{uuid.uuid4()}'
+        os.makedirs(out_dir, exist_ok=True)
+
+        for i, gen_img in enumerate(make_animation_rt(source_image, source_semantics, target_semantics,
+                                        self.generator, self.kp_extractor, self.he_estimator, self.mapping,
+                                        yaw_c_seq, pitch_c_seq, roll_c_seq, use_exp = True)):
+
+            ### the generated video is 256x256, so we keep the aspect ratio,
+            original_size = crop_info[0]
+            if original_size:
+                gen_img = cv2.resize(gen_img,(img_size, int(img_size * original_size[1]/original_size[0]) ))
+
+            img_name = f'test_{i}'
+
+            if enhancer:
+                enhanced_img = enhancer_single_img(gen_img)
+                img_path = f'{out_dir}/{img_name}_enhanced.png'
+                imageio.imsave(img_path, enhanced_img)
+                print(f'The enhanced image is stored in: {img_path}')
+            else:
+                img_path = f'{out_dir}/{img_name}.png'
+                imageio.imsave(img_path, gen_img)
+                print(f'The generated image is stored in: {img_path}')
+
+            yield img_path
 
