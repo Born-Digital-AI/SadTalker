@@ -176,13 +176,7 @@ def make_animation_rt(source_image, source_semantics, target_semantics,
             kp_driving_new = keypoint_transformation(kp_canonical_new, he_driving, wo_exp=True)
             out = generator(source_image_new, kp_source=kp_source_new, kp_driving=kp_driving_new)
             '''
-            prediction = out['prediction']
-
-            image = prediction
-            image = image.data.cpu().numpy().squeeze()
-            image = np.transpose(image, [1, 2, 0])
-
-            yield img_as_ubyte(image)
+            yield out['prediction']
 
 
 class AnimateModel(torch.nn.Module):
