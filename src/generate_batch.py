@@ -42,7 +42,7 @@ def generate_blink_seq_randomly(num_frames):
     while frame_id in range(num_frames):
         start = random.choice(range(min(10,num_frames), min(int(num_frames/2), 70))) 
         if frame_id+start+5<=num_frames - 1:
-            ratio[frame_id+start:frame_id+start+5, 0] = [0.5, 0.9, 1.0, 0.9, 0.5]
+            ratio[frame_id+start:frame_id+start+5, 0] = [0.8, 1.3, 1.5, 1.3, 0.8]
             frame_id = frame_id+start+5
         else:
             break
