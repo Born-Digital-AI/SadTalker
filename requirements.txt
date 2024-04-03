@@ -20,3 +20,4 @@ gfpgan
 av
 safetensors
 realesrgan
+lpips

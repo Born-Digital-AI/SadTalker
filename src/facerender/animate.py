@@ -7,6 +7,9 @@ import warnings
 from skimage import img_as_ubyte
 import safetensors
 import safetensors.torch
+from PIL import Image
+
+from src.utils.codeformer_enhancer import codeformer_enhance
 
 warnings.filterwarnings('ignore')
 
@@ -19,7 +22,7 @@ from src.facerender.modules.generator import OcclusionAwareGenerator, OcclusionA
 from src.facerender.modules.make_animation import make_animation, make_animation_rt
 
 from pydub import AudioSegment
-from src.utils.face_enhancer import enhancer_generator_with_len, enhancer_list, enhancer_single_img
+# from src.utils.face_enhancer import enhancer_generator_with_len, enhancer_list, enhancer_single_img
 from src.utils.paste_pic import paste_pic
 from src.utils.videoio import save_video_with_watermark
 
@@ -157,111 +160,111 @@ class AnimateFromCoeff():
 
         return checkpoint['epoch']
 
-    def generate(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None,
-                 preprocess='crop', img_size=256):
-
-        source_image = x['source_image'].type(torch.FloatTensor)
-        source_semantics = x['source_semantics'].type(torch.FloatTensor)
-        target_semantics = x['target_semantics_list'].type(torch.FloatTensor)
-        source_image = source_image.to(self.device)
-        source_semantics = source_semantics.to(self.device)
-        target_semantics = target_semantics.to(self.device)
-        if 'yaw_c_seq' in x:
-            yaw_c_seq = x['yaw_c_seq'].type(torch.FloatTensor)
-            yaw_c_seq = x['yaw_c_seq'].to(self.device)
-        else:
-            yaw_c_seq = None
-        if 'pitch_c_seq' in x:
-            pitch_c_seq = x['pitch_c_seq'].type(torch.FloatTensor)
-            pitch_c_seq = x['pitch_c_seq'].to(self.device)
-        else:
-            pitch_c_seq = None
-        if 'roll_c_seq' in x:
-            roll_c_seq = x['roll_c_seq'].type(torch.FloatTensor)
-            roll_c_seq = x['roll_c_seq'].to(self.device)
-        else:
-            roll_c_seq = None
-
-        frame_num = x['frame_num']
-
-        predictions_video = make_animation(source_image, source_semantics, target_semantics,
-                                           self.generator, self.kp_extractor, self.he_estimator, self.mapping,
-                                           yaw_c_seq, pitch_c_seq, roll_c_seq, use_exp=True)
-
-        predictions_video = predictions_video.reshape((-1,) + predictions_video.shape[2:])
-        predictions_video = predictions_video[:frame_num]
-
-        video = []
-        for idx in range(predictions_video.shape[0]):
-            image = predictions_video[idx]
-            image = np.transpose(image.data.cpu().numpy(), [1, 2, 0]).astype(np.float32)
-            video.append(image)
-        result = img_as_ubyte(video)
-
-        ### the generated video is 256x256, so we keep the aspect ratio, 
-        original_size = crop_info[0]
-        if original_size:
-            result = [cv2.resize(result_i, (img_size, int(img_size * original_size[1] / original_size[0]))) for result_i
-                      in result]
-
-        video_name = x['video_name'] + '.mp4'
-        path = os.path.join(video_save_dir, 'temp_' + video_name)
-
-        imageio.mimsave(path, result, fps=float(25))
-
-        av_path = os.path.join(video_save_dir, video_name)
-        return_path = av_path
-
-        audio_path = x['audio_path']
-        audio_name = os.path.splitext(os.path.split(audio_path)[-1])[0]
-        new_audio_path = os.path.join(video_save_dir, audio_name + '.wav')
-        start_time = 0
-        # cog will not keep the .mp3 filename
-        sound = AudioSegment.from_file(audio_path)
-        frames = frame_num
-        end_time = start_time + frames * 1 / 25 * 1000
-        word1 = sound.set_frame_rate(16000)
-        word = word1[start_time:end_time]
-        word.export(new_audio_path, format="wav")
-
-        save_video_with_watermark(path, new_audio_path, av_path, watermark=False)
-        print(f'The generated video is named {video_save_dir}/{video_name}')
-
-        if 'full' in preprocess.lower():
-            # only add watermark to the full image.
-            video_name_full = x['video_name'] + '_full.mp4'
-            full_video_path = os.path.join(video_save_dir, video_name_full)
-            return_path = full_video_path
-            paste_pic(path, pic_path, crop_info, new_audio_path, full_video_path,
-                      extended_crop=True if 'ext' in preprocess.lower() else False)
-            print(f'The generated video is named {video_save_dir}/{video_name_full}')
-        else:
-            full_video_path = av_path
-
-            #### paste back then enhancers
-        if enhancer:
-            video_name_enhancer = x['video_name'] + '_enhanced.mp4'
-            enhanced_path = os.path.join(video_save_dir, 'temp_' + video_name_enhancer)
-            av_path_enhancer = os.path.join(video_save_dir, video_name_enhancer)
-            return_path = av_path_enhancer
-
-            try:
-                enhanced_images_gen_with_len = enhancer_generator_with_len(full_video_path, method=enhancer,
-                                                                           bg_upsampler=background_enhancer)
-                imageio.mimsave(enhanced_path, enhanced_images_gen_with_len, fps=float(25))
-            except:
-                enhanced_images_gen_with_len = enhancer_list(full_video_path, method=enhancer,
-                                                             bg_upsampler=background_enhancer)
-                imageio.mimsave(enhanced_path, enhanced_images_gen_with_len, fps=float(25))
-
-            save_video_with_watermark(enhanced_path, new_audio_path, av_path_enhancer, watermark=False)
-            print(f'The generated video is named {video_save_dir}/{video_name_enhancer}')
-            os.remove(enhanced_path)
-
-        os.remove(path)
-        os.remove(new_audio_path)
-
-        return return_path
+    # def generate(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None,
+    #              preprocess='crop', img_size=256):
+    #
+    #     source_image = x['source_image'].type(torch.FloatTensor)
+    #     source_semantics = x['source_semantics'].type(torch.FloatTensor)
+    #     target_semantics = x['target_semantics_list'].type(torch.FloatTensor)
+    #     source_image = source_image.to(self.device)
+    #     source_semantics = source_semantics.to(self.device)
+    #     target_semantics = target_semantics.to(self.device)
+    #     if 'yaw_c_seq' in x:
+    #         yaw_c_seq = x['yaw_c_seq'].type(torch.FloatTensor)
+    #         yaw_c_seq = x['yaw_c_seq'].to(self.device)
+    #     else:
+    #         yaw_c_seq = None
+    #     if 'pitch_c_seq' in x:
+    #         pitch_c_seq = x['pitch_c_seq'].type(torch.FloatTensor)
+    #         pitch_c_seq = x['pitch_c_seq'].to(self.device)
+    #     else:
+    #         pitch_c_seq = None
+    #     if 'roll_c_seq' in x:
+    #         roll_c_seq = x['roll_c_seq'].type(torch.FloatTensor)
+    #         roll_c_seq = x['roll_c_seq'].to(self.device)
+    #     else:
+    #         roll_c_seq = None
+    #
+    #     frame_num = x['frame_num']
+    #
+    #     predictions_video = make_animation(source_image, source_semantics, target_semantics,
+    #                                        self.generator, self.kp_extractor, self.he_estimator, self.mapping,
+    #                                        yaw_c_seq, pitch_c_seq, roll_c_seq, use_exp=True)
+    #
+    #     predictions_video = predictions_video.reshape((-1,) + predictions_video.shape[2:])
+    #     predictions_video = predictions_video[:frame_num]
+    #
+    #     video = []
+    #     for idx in range(predictions_video.shape[0]):
+    #         image = predictions_video[idx]
+    #         image = np.transpose(image.data.cpu().numpy(), [1, 2, 0]).astype(np.float32)
+    #         video.append(image)
+    #     result = img_as_ubyte(video)
+    #
+    #     ### the generated video is 256x256, so we keep the aspect ratio,
+    #     original_size = crop_info[0]
+    #     if original_size:
+    #         result = [cv2.resize(result_i, (img_size, int(img_size * original_size[1] / original_size[0]))) for result_i
+    #                   in result]
+    #
+    #     video_name = x['video_name'] + '.mp4'
+    #     path = os.path.join(video_save_dir, 'temp_' + video_name)
+    #
+    #     imageio.mimsave(path, result, fps=float(25))
+    #
+    #     av_path = os.path.join(video_save_dir, video_name)
+    #     return_path = av_path
+    #
+    #     audio_path = x['audio_path']
+    #     audio_name = os.path.splitext(os.path.split(audio_path)[-1])[0]
+    #     new_audio_path = os.path.join(video_save_dir, audio_name + '.wav')
+    #     start_time = 0
+    #     # cog will not keep the .mp3 filename
+    #     sound = AudioSegment.from_file(audio_path)
+    #     frames = frame_num
+    #     end_time = start_time + frames * 1 / 25 * 1000
+    #     word1 = sound.set_frame_rate(16000)
+    #     word = word1[start_time:end_time]
+    #     word.export(new_audio_path, format="wav")
+    #
+    #     save_video_with_watermark(path, new_audio_path, av_path, watermark=False)
+    #     print(f'The generated video is named {video_save_dir}/{video_name}')
+    #
+    #     if 'full' in preprocess.lower():
+    #         # only add watermark to the full image.
+    #         video_name_full = x['video_name'] + '_full.mp4'
+    #         full_video_path = os.path.join(video_save_dir, video_name_full)
+    #         return_path = full_video_path
+    #         paste_pic(path, pic_path, crop_info, new_audio_path, full_video_path,
+    #                   extended_crop=True if 'ext' in preprocess.lower() else False)
+    #         print(f'The generated video is named {video_save_dir}/{video_name_full}')
+    #     else:
+    #         full_video_path = av_path
+    #
+    #         #### paste back then enhancers
+    #     if enhancer:
+    #         video_name_enhancer = x['video_name'] + '_enhanced.mp4'
+    #         enhanced_path = os.path.join(video_save_dir, 'temp_' + video_name_enhancer)
+    #         av_path_enhancer = os.path.join(video_save_dir, video_name_enhancer)
+    #         return_path = av_path_enhancer
+    #
+    #         try:
+    #             enhanced_images_gen_with_len = enhancer_generator_with_len(full_video_path, method=enhancer,
+    #                                                                        bg_upsampler=background_enhancer)
+    #             imageio.mimsave(enhanced_path, enhanced_images_gen_with_len, fps=float(25))
+    #         except:
+    #             enhanced_images_gen_with_len = enhancer_list(full_video_path, method=enhancer,
+    #                                                          bg_upsampler=background_enhancer)
+    #             imageio.mimsave(enhanced_path, enhanced_images_gen_with_len, fps=float(25))
+    #
+    #         save_video_with_watermark(enhanced_path, new_audio_path, av_path_enhancer, watermark=False)
+    #         print(f'The generated video is named {video_save_dir}/{video_name_enhancer}')
+    #         os.remove(enhanced_path)
+    #
+    #     os.remove(path)
+    #     os.remove(new_audio_path)
+    #
+    #     return return_path
 
     def generate_rt(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None,
                     preprocess='crop', img_size=256):
@@ -294,20 +297,27 @@ class AnimateFromCoeff():
         for i, predictions in enumerate(make_animation_rt(source_image, source_semantics, target_semantics,
                                              self.generator, self.kp_extractor, self.he_estimator, self.mapping,
                                              yaw_c_seq, pitch_c_seq, roll_c_seq, use_exp=True)):
-            # if enhancer:
-            #     predictions = enhancer(predictions)
-            # TODO: make enhancer take tensors
-            for idx in range(predictions.shape[0]):
-                prediction = predictions[idx]
-                image = np.transpose(prediction.data.cpu().numpy(), [1, 2, 0]).astype(np.float32)
-                image = img_as_ubyte(image)
 
-                original_size = crop_info[0]
-                if original_size:
-                    image = cv2.resize(image, (img_size, int(img_size * original_size[1] / original_size[0])))
+            restored_faces = codeformer_enhance(predictions)
 
+            for idx, restored_face in enumerate(restored_faces):
                 img_name = f'test_{i}_{idx}'
                 img_path = f'{out_dir}/{img_name}.png'
-                imageio.imsave(img_path, image)
+                Image.fromarray(restored_face[:, :, ::-1]).save(img_path)
                 print(f'The generated image is stored in: {img_path}')
-                yield img_path
+            # if enhancer:
+            #     predictions = enhancer(predictions)
+            # for idx in range(predictions.shape[0]):
+            #     prediction = predictions[idx]
+            #     image = np.transpose(prediction.data.cpu().numpy(), [1, 2, 0]).astype(np.float32)
+            #     image = img_as_ubyte(image)
+            #
+            #     original_size = crop_info[0]
+            #     if original_size:
+            #         image = cv2.resize(image, (img_size, int(img_size * original_size[1] / original_size[0])))
+            #
+            #     img_name = f'test_{i}_{idx}'
+            #     img_path = f'{out_dir}/{img_name}.png'
+            #     imageio.imsave(img_path, image)
+            #     print(f'The generated image is stored in: {img_path}')
+            #     yield img_path
