@@ -5,7 +5,10 @@ import numpy as np
 import warnings
 from skimage import img_as_ubyte
 import safetensors
-import safetensors.torch 
+import safetensors.torch
+
+from src.generate_batch import parse_audio_length
+
 warnings.filterwarnings('ignore')
 
 
@@ -23,6 +26,7 @@ from pydub import AudioSegment
 from src.utils.face_enhancer import enhancer_generator_with_len, enhancer_list
 from src.utils.paste_pic import paste_pic
 from src.utils.videoio import save_video_with_watermark
+import src.utils.audio as audio
 
 try:
     import webui  # in webui
@@ -154,7 +158,7 @@ class AnimateFromCoeff():
 
         return checkpoint['epoch']
 
-    def generate(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None, preprocess='crop', img_size=256):
+    def generate(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None, preprocess='crop', img_size=256, idlemode=False, length_of_audio=0):
 
         source_image=x['source_image'].type(torch.FloatTensor)
         source_semantics=x['source_semantics'].type(torch.FloatTensor)
@@ -210,16 +214,26 @@ class AnimateFromCoeff():
         audio_path =  x['audio_path'] 
         audio_name = os.path.splitext(os.path.split(audio_path)[-1])[0]
         new_audio_path = os.path.join(video_save_dir, audio_name+'.wav')
-        start_time = 0
-        # cog will not keep the .mp3 filename
-        sound = AudioSegment.from_file(audio_path)
-        frames = frame_num 
-        end_time = start_time + frames*1/25*1000
-        word1=sound.set_frame_rate(16000)
-        word = word1[start_time:end_time]
-        word.export(new_audio_path, format="wav")
+        if idlemode:
+            if length_of_audio:
+                duration = 1000 * length_of_audio
+            else:
+                wav = audio.load_wav(audio_path, 16000)
+                _, num_frames = parse_audio_length(len(wav), 16000, 25)
+                duration = 1000 * (num_frames / 25)
+            one_sec_segment = AudioSegment.silent(duration=duration)  # duration in milliseconds
+            one_sec_segment.export(new_audio_path, format="wav")
+        else:
+            start_time = 0
+            # cog will not keep the .mp3 filename
+            sound = AudioSegment.from_file(audio_path)
+            frames = frame_num
+            end_time = start_time + frames*1/25*1000
+            word1=sound.set_frame_rate(16000)
+            word = word1[start_time:end_time]
+            word.export(new_audio_path, format="wav")
 
-        save_video_with_watermark(path, new_audio_path, av_path, watermark= False)
+        save_video_with_watermark(path, new_audio_path, av_path, watermark=False)
         print(f'The generated video is named {video_save_dir}/{video_name}') 
 
         if 'full' in preprocess.lower():
@@ -227,7 +241,7 @@ class AnimateFromCoeff():
             video_name_full = x['video_name']  + '_full.mp4'
             full_video_path = os.path.join(video_save_dir, video_name_full)
             return_path = full_video_path
-            paste_pic(path, pic_path, crop_info, new_audio_path, full_video_path, extended_crop= True if 'ext' in preprocess.lower() else False)
+            paste_pic(path, pic_path, crop_info, new_audio_path, full_video_path, extended_crop=True if 'ext' in preprocess.lower() else False)
             print(f'The generated video is named {video_save_dir}/{video_name_full}') 
         else:
             full_video_path = av_path 

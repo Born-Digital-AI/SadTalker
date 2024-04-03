@@ -32,23 +32,29 @@ def generate_blink_seq(num_frames):
             frame_id = frame_id+start+9
         else:
             break
-    return ratio 
+    return ratio
 
-def generate_blink_seq_randomly(num_frames):
+def generate_blink_seq_randomly(num_frames, idlemode=False):
     ratio = np.zeros((num_frames,1))
-    if num_frames<=20:
+    min_start = 20 if idlemode else 10
+    if num_frames <= min_start * 2:
         return ratio
     frame_id = 0
     while frame_id in range(num_frames):
-        start = random.choice(range(min(10,num_frames), min(int(num_frames/2), 70))) 
-        if frame_id+start+5<=num_frames - 1:
-            ratio[frame_id+start:frame_id+start+5, 0] = [0.5, 0.9, 1.0, 0.9, 0.5]
-            frame_id = frame_id+start+5
+        if idlemode:
+            start = random.choice(range(min(20, num_frames), min(int(num_frames / 2), 70)))
+            blink_intensity = [0.4, 0.6, 1, 0.6, 0.4]
+        else:
+            start = random.choice(range(min(10, num_frames), min(int(num_frames / 2), 70)))
+            blink_intensity = [0.8, 1.3, 1.5, 1.3, 0.8]
+        if frame_id + start + len(blink_intensity) <= num_frames - 1:
+            ratio[frame_id + start:frame_id + start + len(blink_intensity), 0] = blink_intensity
+            frame_id = frame_id + start + len(blink_intensity)
         else:
             break
     return ratio
 
-def get_data(first_coeff_path, audio_path, device, ref_eyeblink_coeff_path, still=False, idlemode=False, length_of_audio=False, use_blink=True):
+def get_data(first_coeff_path, audio_path, device, ref_eyeblink_coeff_path, still=False, idlemode=False, length_of_audio=0, use_blink=True):
 
     syncnet_mel_step_size = 16
     fps = 25
@@ -58,7 +64,11 @@ def get_data(first_coeff_path, audio_path, device, ref_eyeblink_coeff_path, stil
 
     
     if idlemode:
-        num_frames = int(length_of_audio * 25)
+        if length_of_audio:
+            num_frames = int(length_of_audio * 25)
+        else:
+            wav = audio.load_wav(audio_path, 16000)
+            wav_length, num_frames = parse_audio_length(len(wav), 16000, 25)
         indiv_mels = np.zeros((num_frames, 80, 16))
     else:
         wav = audio.load_wav(audio_path, 16000) 
@@ -78,7 +88,7 @@ def get_data(first_coeff_path, audio_path, device, ref_eyeblink_coeff_path, stil
             indiv_mels.append(m.T)
         indiv_mels = np.asarray(indiv_mels)         # T 80 16
 
-    ratio = generate_blink_seq_randomly(num_frames)      # T
+    ratio = generate_blink_seq_randomly(num_frames, idlemode)      # T
     source_semantics_path = first_coeff_path
     source_semantics_dict = scio.loadmat(source_semantics_path)
     ref_coeff = source_semantics_dict['coeff_3dmm'][:1,:70]         #1 70
