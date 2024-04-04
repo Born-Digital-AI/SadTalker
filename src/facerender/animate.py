@@ -25,7 +25,7 @@ from src.facerender.modules.make_animation import make_animation
 from pydub import AudioSegment 
 from src.utils.face_enhancer import enhancer_generator_with_len, enhancer_list
 from src.utils.paste_pic import paste_pic
-from src.utils.videoio import save_video_with_watermark
+from src.utils.videoio import save_video_with_watermark, load_video_to_cv2, fill_images
 import src.utils.audio as audio
 
 try:
@@ -158,7 +158,8 @@ class AnimateFromCoeff():
 
         return checkpoint['epoch']
 
-    def generate(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None, preprocess='crop', img_size=256, idlemode=False, length_of_audio=0):
+    def generate(self, x, video_save_dir, pic_path, crop_info, enhancer=None, background_enhancer=None, preprocess='crop',
+                 img_size=256, idlemode=False, length_of_audio=0, bg_image=None):
 
         source_image=x['source_image'].type(torch.FloatTensor)
         source_semantics=x['source_semantics'].type(torch.FloatTensor)
@@ -263,6 +264,20 @@ class AnimateFromCoeff():
             save_video_with_watermark(enhanced_path, new_audio_path, av_path_enhancer, watermark= False)
             print(f'The generated video is named {video_save_dir}/{video_name_enhancer}')
             os.remove(enhanced_path)
+
+        if bg_image:
+            images = load_video_to_cv2(return_path)
+            overlay_images = fill_images(images, bg_image)
+
+            video_name_overlay = x['video_name'] + '_overlay.mp4'
+            overlay_vid_path = os.path.join(video_save_dir, 'temp_'+video_name_overlay)
+            av_path_overlay = os.path.join(video_save_dir, video_name_overlay)
+            return_path = av_path_overlay
+            imageio.mimsave(overlay_vid_path, overlay_images, fps=float(25))
+
+            save_video_with_watermark(overlay_vid_path, new_audio_path, av_path_overlay, watermark=False)
+
+            os.remove(overlay_vid_path)
 
         os.remove(path)
         os.remove(new_audio_path)

@@ -43,7 +43,7 @@ def generate_blink_seq_randomly(num_frames, idlemode=False):
     while frame_id in range(num_frames):
         if idlemode:
             start = random.choice(range(min(20, num_frames), min(int(num_frames / 2), 70)))
-            blink_intensity = [0.4, 0.6, 1, 0.6, 0.4]
+            blink_intensity = [0.6, 1.0, 1.5, 1.0, 0.6]
         else:
             start = random.choice(range(min(10, num_frames), min(int(num_frames / 2), 70)))
             blink_intensity = [0.8, 1.3, 1.5, 1.3, 0.8]
