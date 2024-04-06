@@ -17,7 +17,8 @@ def main(args):
 
     pic_path = args.source_image
     audio_path = args.driven_audio
-    save_dir = os.path.join(args.result_dir, strftime("%Y_%m_%d_%H.%M.%S"))
+    final_vid_name = args.final_vid_name
+    save_dir = os.path.join(args.result_dir, final_vid_name.split('.')[0] if final_vid_name else strftime("%Y_%m_%d_%H.%M.%S"))
     os.makedirs(save_dir, exist_ok=True)
     pose_style = args.pose_style
     device = args.device
@@ -71,7 +72,7 @@ def main(args):
         ref_pose_coeff_path=None
 
     #audio2ceoff
-    batch = get_data(first_coeff_path, audio_path, device, ref_eyeblink_coeff_path, still=args.still)
+    batch = get_data(first_coeff_path, audio_path, device, ref_eyeblink_coeff_path, still=args.still, idlemode=args.idlemode, length_of_audio=args.len)
     coeff_path = audio_to_coeff.generate(batch, save_dir, pose_style, ref_pose_coeff_path)
 
     # 3dface render
@@ -85,8 +86,10 @@ def main(args):
                                 expression_scale=args.expression_scale, still_mode=args.still, preprocess=args.preprocess, size=args.size)
     
     result = animate_from_coeff.generate(data, save_dir, pic_path, crop_info, \
-                                enhancer=args.enhancer, background_enhancer=args.background_enhancer, preprocess=args.preprocess, img_size=args.size)
-    
+                                enhancer=args.enhancer, background_enhancer=args.background_enhancer, preprocess=args.preprocess,
+                                         img_size=args.size, idlemode=args.idlemode, length_of_audio=args.len,
+                                         bg_image=args.bg_image)
+
     shutil.move(result, save_dir+'.mp4')
     print('The generated video is named:', save_dir+'.mp4')
 
@@ -99,10 +102,12 @@ if __name__ == '__main__':
     parser = ArgumentParser()  
     parser.add_argument("--driven_audio", default='./examples/driven_audio/bus_chinese.wav', help="path to driven audio")
     parser.add_argument("--source_image", default='./examples/source_image/full_body_1.png', help="path to source image")
+    parser.add_argument("--bg_image", default=None, help="path to background image (wide or portrait mode)")
     parser.add_argument("--ref_eyeblink", default=None, help="path to reference video providing eye blinking")
     parser.add_argument("--ref_pose", default=None, help="path to reference video providing pose")
     parser.add_argument("--checkpoint_dir", default='./checkpoints', help="path to output")
     parser.add_argument("--result_dir", default='./results', help="path to output")
+    parser.add_argument("--final_vid_name", default=None, help="name of the final generated video")
     parser.add_argument("--pose_style", type=int, default=0,  help="input pose style from [0, 46)")
     parser.add_argument("--batch_size", type=int, default=2,  help="the batch size of facerender")
     parser.add_argument("--size", type=int, default=256,  help="the image size of the facerender")
@@ -115,7 +120,9 @@ if __name__ == '__main__':
     parser.add_argument("--cpu", dest="cpu", action="store_true") 
     parser.add_argument("--face3dvis", action="store_true", help="generate 3d face and 3d landmarks") 
     parser.add_argument("--still", action="store_true", help="can crop back to the original videos for the full body aniamtion") 
-    parser.add_argument("--preprocess", default='crop', choices=['crop', 'extcrop', 'resize', 'full', 'extfull'], help="how to preprocess the images" ) 
+    parser.add_argument("--idlemode", action="store_true", help="makes video non-speaking")
+    parser.add_argument("--len", type=int, default=0, help="length of silent audio when using idlemode")
+    parser.add_argument("--preprocess", default='crop', choices=['crop', 'extcrop', 'resize', 'full', 'extfull'], help="how to preprocess the images" )
     parser.add_argument("--verbose",action="store_true", help="saving the intermedia output or not" ) 
     parser.add_argument("--old_version",action="store_true", help="use the pth other than safetensor version" ) 
 
