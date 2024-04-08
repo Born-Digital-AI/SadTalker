@@ -27,9 +27,11 @@ def ref_video_fn(path_of_ref_video):
 def sadtalker_demo(checkpoint_path='checkpoints', config_path='src/config'):
     sad_talker = SadTalker(checkpoint_path, config_path, lazy_load=True)
 
-    with gr.Blocks(analytics_enabled=False, title="Avatar Generator 😎", theme="gradio/monochrome") as sadtalker_interface:
+    with gr.Blocks(analytics_enabled=False, title="Avatar Generator 😎",
+                   theme="gradio/monochrome") as sadtalker_interface:
         with gr.Row():
-            gr.Markdown("<div style='display: flex;justify-content: center'> <h1> Generate Talking Avatar 🗣️</h1> </div>")
+            gr.Markdown(
+                "<div style='display: flex;justify-content: center'> <h1> Generate Talking Avatar 🗣️</h1> </div>")
 
         with gr.Row():
             with gr.Column(variant='panel'):
@@ -79,28 +81,32 @@ def sadtalker_demo(checkpoint_path='checkpoints', config_path='src/config'):
                             "<div <p style='color: #A3A3A3;'>When you are happy with the test video, generate complete avatar</p> </div>")
                         generate = gr.Button('Generate Avatar', elem_id="sadtalker_generate", variant='primary')
 
-        inputs = [
-            source_image,
-            driven_audio,
-            preprocess_type,
-            is_still_mode,
-            enhancer,
-            batch_size,
-            size_of_image,
-            pose_style,
-            exp_scale,
-            bg_image
-        ]
-
         test.click(
             fn=sad_talker.test,
-            inputs=inputs,
+            inputs=[
+                source_image,
+                driven_audio,
+                preprocess_type,
+                is_still_mode,
+                enhancer,
+                batch_size,
+                size_of_image,
+                pose_style,
+                exp_scale,
+                bg_image
+            ],
             outputs=[gen_video]
         )
 
         generate.click(
             fn=sad_talker.generate_avatar,
-            inputs=inputs,
+            inputs=[
+                source_image,
+                bg_image,
+                preprocess_type,
+                is_still_mode,
+                exp_scale,
+            ],
         )
 
     return sadtalker_interface
