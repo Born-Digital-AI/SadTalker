@@ -35,7 +35,7 @@ class SadTalker():
 
     def test(self, source_image, driven_audio, preprocess='crop', 
         still_mode=False,  use_enhancer=False, batch_size=1, size=256, 
-        pose_style = 0, exp_scale=1.0, 
+        pose_style = 0, exp_scale=1.0, bg_image=None,
         use_ref_video = False,
         ref_video = None,
         ref_info = None,
@@ -69,7 +69,7 @@ class SadTalker():
                 mp3_to_wav(driven_audio, audio_path.replace('.mp3', '.wav'), 16000)
                 audio_path = audio_path.replace('.mp3', '.wav')
             else:
-                shutil.move(driven_audio, input_dir)
+                shutil.copy(driven_audio, input_dir)
 
         elif use_idle_mode:
             audio_path = os.path.join(input_dir, 'idlemode_'+str(length_of_audio)+'.wav') ## generate audio from this new audio_path
@@ -136,7 +136,7 @@ class SadTalker():
 
         #coeff2video
         data = get_facerender_data(coeff_path, crop_pic_path, first_coeff_path, audio_path, batch_size, still_mode=still_mode, preprocess=preprocess, size=size, expression_scale = exp_scale)
-        return_path = self.animate_from_coeff.generate(data, save_dir,  pic_path, crop_info, enhancer='gfpgan' if use_enhancer else None, preprocess=preprocess, img_size=size)
+        return_path = self.animate_from_coeff.generate(data, save_dir,  pic_path, crop_info, enhancer='gfpgan' if use_enhancer else None, preprocess=preprocess, img_size=size, bg_image=bg_image)
         video_name = data['video_name']
         print(f'The generated video is named {video_name} in {save_dir}')
 
@@ -152,4 +152,16 @@ class SadTalker():
         
         return return_path
 
+    def generate_avatar(self, source_image, driven_audio, preprocess='crop',
+             still_mode=False, use_enhancer=False, batch_size=1, size=256,
+             pose_style=0, exp_scale=1.0, bg_image=None,
+             use_ref_video=False,
+             ref_video=None,
+             ref_info=None,
+             use_idle_mode=False,
+             length_of_audio=0, use_blink=True,
+             result_dir='./results/'):
+
+        print("Generating avatar")
+        # TODO: call the gen_avatar.py script
     
