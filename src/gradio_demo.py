@@ -2,8 +2,11 @@ import torch, uuid
 import os, shutil
 from pydub import AudioSegment
 from rq import get_current_job
+import logging as log
 
 from src.utils.b64 import base64_to_image
+from src.utils.email_sender import EmailSender
+from src.utils.blob_storage import BlobStorage
 from src.utils.preprocess import CropAndExtract
 from src.test_audio2coeff import Audio2Coeff
 from src.facerender.animate import AnimateFromCoeff
@@ -44,7 +47,7 @@ class SadTalker():
              result_dir='./results/'):
 
         self.sadtalker_paths = init_path(self.checkpoint_path, self.config_path, size, False, preprocess)
-        print(self.sadtalker_paths)
+        log.info(self.sadtalker_paths)
 
         self.audio_to_coeff = Audio2Coeff(self.sadtalker_paths, self.device)
         self.preprocess_model = CropAndExtract(self.sadtalker_paths, self.device)
@@ -57,7 +60,7 @@ class SadTalker():
         input_dir = os.path.join(save_dir, 'input')
         os.makedirs(input_dir, exist_ok=True)
 
-        print(source_image)
+        log.info(source_image)
         pic_path = os.path.join(input_dir, os.path.basename(source_image))
         shutil.move(source_image, input_dir)
 
@@ -78,13 +81,12 @@ class SadTalker():
             one_sec_segment = AudioSegment.silent(duration=1000 * length_of_audio)  # duration in milliseconds
             one_sec_segment.export(audio_path, format="wav")
         else:
-            print(use_ref_video, ref_info)
             assert use_ref_video == True and ref_info == 'all'
 
         if use_ref_video and ref_info == 'all':  # full ref mode
             ref_video_videoname = os.path.basename(ref_video)
             audio_path = os.path.join(save_dir, ref_video_videoname + '.wav')
-            print('new audiopath:', audio_path)
+            log.info(f'new audiopath: {audio_path}')
             # if ref_video contains audio, set the audio from ref_video.
             cmd = r"ffmpeg -y -hide_banner -loglevel error -i %s %s" % (ref_video, audio_path)
             os.system(cmd)
@@ -101,11 +103,11 @@ class SadTalker():
             raise AttributeError("No face is detected")
 
         if use_ref_video:
-            print('using ref video for genreation')
+            log.info('using ref video for genreation')
             ref_video_videoname = os.path.splitext(os.path.split(ref_video)[-1])[0]
             ref_video_frame_dir = os.path.join(save_dir, ref_video_videoname)
             os.makedirs(ref_video_frame_dir, exist_ok=True)
-            print('3DMM Extraction for the reference video providing pose')
+            log.info('3DMM Extraction for the reference video providing pose')
             ref_video_coeff_path, _, _ = self.preprocess_model.generate(ref_video, ref_video_frame_dir, preprocess,
                                                                         source_image_flag=False)
         else:
@@ -146,7 +148,7 @@ class SadTalker():
                                                        enhancer='gfpgan' if use_enhancer else None,
                                                        preprocess=preprocess, img_size=size, bg_image=bg_image)
         video_name = data['video_name']
-        print(f'The generated video is named {video_name} in {save_dir}')
+        log.info(f'The generated video is named {video_name} in {save_dir}')
 
         del self.preprocess_model
         del self.audio_to_coeff
@@ -167,40 +169,65 @@ class SadTalker():
                         is_still_mode,
                         exp_scale,
                         email):
+        job = get_current_job()
+        job_id = job.id
 
-        print("Generating avatar")
+        job.meta['job_id'] = job_id
+        job.meta['email'] = email
+        job.meta['preprocess_type'] = preprocess_type
+        job.meta['is_still_mode'] = is_still_mode
+        job.meta['exp_scale'] = exp_scale
+
+        return 'url'
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
 
-        print("Source image path: ", source_image)
-        print("Background image path: ", bg_image)
-
-        job = get_current_job()
-
-        job_id = job.id if job else str(uuid.uuid4())
-
-        print(f"Running job with id {job_id}")
+        log.info(f"Source image path: {source_image}")
+        log.info(f"Background image path: {bg_image}")
 
         audio_dir = './examples/custom/audio'
-        result_dir = f'./examples/custom/out/{job_id}'
+        result_dir = f'./examples/custom/result/{job_id}'
+        output_dir = './examples/custom/out'
         batch_size = os.environ.get('BATCH_SIZE', 2)
 
         os.makedirs(result_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
 
         for audio in os.listdir(audio_dir):
             audio_path = os.path.join(audio_dir, audio)
             audio_name = os.path.splitext(audio)[0]
 
-            print(f'Generating video for audio {audio}')
+            log.info(f'Generating video for audio {audio}')
             cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
-            print(f'Video generated and saved to {result_dir}/{audio_name}.mp4')
+            log.info(f'Video generated and saved to {result_dir}/{audio_name}.mp4')
 
-        print(f'Generating default video')
+        log.info(f'Generating default video')
         default_vid_name = 'default-video.mp4'
         cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 30'
         os.system(cmd)
-        print(f'Default video generated and saved to {result_dir}/{default_vid_name}')
+        log.info(f'Default video generated and saved to {result_dir}/{default_vid_name}')
 
-        # TODO: upload videos to storage and send link by email?
+        output_filename = f'{output_dir}/{job_id}'
+        shutil.make_archive(output_filename, 'zip', result_dir)
+        log.info(f'Archive created at {output_filename}.zip')
+
+        blob_storage = BlobStorage()
+        blob_storage.upload_file(f'{output_filename}.zip')
+        download_url = blob_storage.get_file_url()
+
+        email_sender = EmailSender()
+        subject = 'Link to your avatar videos'
+        html_body = f"""
+                <html>
+                <body>
+                    <h1>Hello there,</h1>
+                    <p>Your avatar videos are ready! 🎉</p>
+                    <p>You can download them by clicking the link below:</p>
+                    <a href="{download_url}" target="_blank">Download Videos</a>
+                    <p>Enjoy your new avatar! 🤖</p>
+                </body>
+                </html>
+                """
+        email_sender.send(subject, html_body, [email])

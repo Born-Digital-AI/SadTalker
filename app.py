@@ -1,6 +1,7 @@
 import os
 import asyncio
 import re
+import logging as log
 
 from fastapi import FastAPI
 import uvicorn
@@ -8,6 +9,7 @@ import gradio as gr
 from dotenv import load_dotenv
 from rq import Queue
 from redis import Redis
+from rq_dashboard_fast import RedisQueueDashboard
 
 from src.api.models import GenerateRequest
 from src.gradio_demo import SadTalker
@@ -19,6 +21,9 @@ try:
     in_webui = True
 except:
     in_webui = False
+
+log_format = "%(asctime)s [%(levelname)s] - %(message)s"
+log.basicConfig(level=log.INFO, format=log_format, datefmt="%Y-%m-%d %H:%M:%S")
 
 
 def toggle_audio_file(choice):
@@ -53,9 +58,9 @@ def gen_avatar_job(source_image,
         bg_img_b64 = image_to_base64(bg_image)
 
         job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
-                        exp_scale, email)
+                        exp_scale, email, result_ttl=86400)
         return gr.Markdown(
-            f"<div> <p style='color: #A3A3A3; margin: 5px 0'> Job with ID <b>{job.get_id()}</b> started. </p> <p style='color: #A3A3A3; margin: 5px 0'> We will send you a link to your email when the avatar is generated. </p> </div>",
+            f"<div> <p style='color: #A3A3A3; margin: 5px 0'> Avatar generation started! 🥳 </p> <p style='color: #A3A3A3; margin: 5px 0'> We will send you a link to your email when the avatar is generated. </p> <p style='color: #A3A3A3; margin: 5px 0'> You can track the progress <a href='{API_BASE_URI}/rq/job/{job.get_id()}' target='_blank'> <b>here</b> </a> </p> </div>",
             visible=True), gr.Button(interactive=False)
     else:
         error_message = "Please enter a valid email address."
@@ -159,6 +164,7 @@ if __name__ == "__main__":
     GRADIO_HOST = os.environ.get('GRADIO_HOST', '0.0.0.0')
     GRADIO_PORT = int(os.environ.get('GRADIO_PORT', '7860'))
 
+    API_BASE_URI = os.environ.get('API_BASE_URI', 'http://localhost:9988')
     API_HOST = os.environ.get('API_HOST', '0.0.0.0')
     API_PORT = int(os.environ.get('API_PORT', '9988'))
 
@@ -167,14 +173,16 @@ if __name__ == "__main__":
 
     q = Queue(connection=Redis(host=REDIS_HOST, port=REDIS_PORT))
 
-    run_in_docker = os.getenv("RUN_ENV") == "docker"
-    print("Running in docker: ", run_in_docker)
+    log.info(f"Application running on port {GRADIO_PORT}")
 
     sad_talker = SadTalker(checkpoint_path='checkpoints', config_path='src/config', lazy_load=True)
     demo = sadtalker_demo(sad_talker)
     demo.queue()
 
     app = FastAPI()
+
+    dashboard = RedisQueueDashboard(f"redis://{REDIS_HOST}:{REDIS_PORT}", "/rq")
+    app.mount("/rq", dashboard)
 
 
     @app.get('/health')
@@ -202,7 +210,7 @@ if __name__ == "__main__":
         email = r.email
 
         job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
-                        exp_scale, email)
+                        exp_scale, email, result_ttl=86400)
 
         return {"job_id": job.get_id()}
 
