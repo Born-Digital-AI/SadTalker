@@ -13,9 +13,11 @@ yacs==0.1.8
 pyyaml  
 joblib==1.1.0
 scikit-image==0.19.3
-basicsr==1.4.2
 facexlib==0.3.0
 gradio==4.25.0
 gfpgan
 av
 safetensors
+python-dotenv
+rq
+-e git+https://github.com/smetak13/BasicSR.git#egg=basicsr

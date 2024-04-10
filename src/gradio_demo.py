@@ -1,14 +1,15 @@
 import torch, uuid
-import os, sys, shutil
+import os, shutil
+from pydub import AudioSegment
+from rq import get_current_job
+
+from src.utils.b64 import base64_to_image
 from src.utils.preprocess import CropAndExtract
 from src.test_audio2coeff import Audio2Coeff
 from src.facerender.animate import AnimateFromCoeff
 from src.generate_batch import get_data
 from src.generate_facerender_batch import get_facerender_data
-
 from src.utils.init_path import init_path
-
-from pydub import AudioSegment
 
 
 def mp3_to_wav(mp3_filename, wav_filename, frame_rate):
@@ -160,16 +161,29 @@ class SadTalker():
 
         return return_path
 
-    def generate_avatar(self, source_image,
-                        bg_image,
+    def generate_avatar(self, source_img_b64,
+                        bg_img_b64,
                         preprocess_type,
                         is_still_mode,
-                        exp_scale):
+                        exp_scale,
+                        email):
 
         print("Generating avatar")
 
+        source_image = base64_to_image(source_img_b64)
+        bg_image = base64_to_image(bg_img_b64)
+
+        print("Source image path: ", source_image)
+        print("Background image path: ", bg_image)
+
+        job = get_current_job()
+
+        job_id = job.id if job else str(uuid.uuid4())
+
+        print(f"Running job with id {job_id}")
+
         audio_dir = './examples/custom/audio'
-        result_dir = f'./examples/custom/out/{str(uuid.uuid4())}'
+        result_dir = f'./examples/custom/out/{job_id}'
         batch_size = os.environ.get('BATCH_SIZE', 2)
 
         os.makedirs(result_dir, exist_ok=True)
@@ -179,13 +193,13 @@ class SadTalker():
             audio_name = os.path.splitext(audio)[0]
 
             print(f'Generating video for audio {audio}')
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir} --bg_image {bg_image} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             print(f'Video generated and saved to {result_dir}/{audio_name}.mp4')
 
         print(f'Generating default video')
         default_vid_name = 'default-video.mp4'
-        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir} --bg_image {bg_image} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 30'
+        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 30'
         os.system(cmd)
         print(f'Default video generated and saved to {result_dir}/{default_vid_name}')
 

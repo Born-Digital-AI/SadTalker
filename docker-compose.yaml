@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  sadtalker:
+    container_name: sadtalker
+    image: borndigitalaibot/sadtalker:0.0.1
+    build: .
+    platform: linux/amd64
+    env_file:
+      - .env
+    ports:
+      - ${GRADIO_PORT}:${GRADIO_PORT}
+      - ${API_PORT}:${API_PORT}
+    depends_on:
+      - sadtalker-redis
+  sadtalker-redis:
+    image: 'redis:latest'
+    volumes:
+      - redis:/redis
+    restart: unless-stopped
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+  sadtalker-worker:
+    build: .
+    command: rq worker
+    platform: linux/amd64
+    env_file:
+      - .env
+    environment:
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+    ports:
+      - ${WORKER_PORT}:${WORKER_PORT}
+    depends_on:
+      - sadtalker
+      - sadtalker-redis
+
+volumes:
+  redis:
