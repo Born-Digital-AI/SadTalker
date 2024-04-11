@@ -58,7 +58,7 @@ def gen_avatar_job(source_image,
         bg_img_b64 = image_to_base64(bg_image)
 
         job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
-                        exp_scale, email, result_ttl=86400)
+                        exp_scale, email, result_ttl=86400, job_timeout='10h')
         return gr.Markdown(
             f"<div> <p style='color: #A3A3A3; margin: 5px 0'> Avatar generation started! 🥳 </p> <p style='color: #A3A3A3; margin: 5px 0'> We will send you a link to your email when the avatar is generated. </p> <p style='color: #A3A3A3; margin: 5px 0'> You can track the progress <a href='{API_BASE_URI}/rq/job/{job.get_id()}' target='_blank'> <b>here</b> </a> </p> </div>",
             visible=True), gr.Button(interactive=False)
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         email = r.email
 
         job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
-                        exp_scale, email, result_ttl=86400)
+                        exp_scale, email, result_ttl=86400, job_timeout='10h')
 
         return {"job_id": job.get_id()}
 
