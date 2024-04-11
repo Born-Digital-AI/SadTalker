@@ -177,8 +177,7 @@ class SadTalker():
         job.meta['preprocess_type'] = preprocess_type
         job.meta['is_still_mode'] = is_still_mode
         job.meta['exp_scale'] = exp_scale
-
-        return 'url'
+        job.save_meta()
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
@@ -214,7 +213,7 @@ class SadTalker():
         log.info(f'Archive created at {output_filename}.zip')
 
         blob_storage = BlobStorage()
-        blob_storage.upload_file(f'{output_filename}.zip')
+        blob_storage.upload_file(f'{output_filename}.zip', job_id)
         download_url = blob_storage.get_file_url()
 
         email_sender = EmailSender()
@@ -231,3 +230,5 @@ class SadTalker():
                 </html>
                 """
         email_sender.send(subject, html_body, [email])
+
+        return download_url

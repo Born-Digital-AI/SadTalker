@@ -1,17 +1,9 @@
-FROM nvidia/cuda:12.4.1-base-ubuntu20.04
-
-ENV PYTHON_VERSION=3.10
+# First stage: Download the model files
+FROM python:3.10-slim-bullseye as model_downloader
 
 WORKDIR /opt
 
-RUN apt-get update && \
-    apt-get install -y software-properties-common && \
-    add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y wget ffmpeg libgl1 git python3.10 python3.10-dev python3.10-venv python3-pip && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
+RUN apt-get update && apt-get install -y wget
 
 RUN mkdir ./checkpoints
 RUN wget -nc https://github.com/OpenTalker/SadTalker/releases/download/v0.0.2-rc/mapping_00109-model.pth.tar -O  ./checkpoints/mapping_00109-model.pth.tar
@@ -25,17 +17,17 @@ RUN wget -nc https://github.com/xinntao/facexlib/releases/download/v0.1.0/detect
 RUN wget -nc https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth -O ./gfpgan/weights/GFPGANv1.4.pth
 RUN wget -nc https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth -O ./gfpgan/weights/parsing_parsenet.pth
 
+# Second stage: Build the actual application container with the model files
+FROM python:3.10-slim-bullseye
 
-ENV PYTHONDONTWRITEBYTECODE=1
+WORKDIR /opt
+RUN apt-get update && apt-get install -y ffmpeg libgl1 git
+
+COPY --from=model_downloader /opt/checkpoints /opt/checkpoints
+COPY --from=model_downloader /opt/gfpgan /opt/gfpgan
 
 COPY requirements.txt /opt/
-ENV VIRTUAL_ENV=/opt/.venv
-RUN python3.10 -m venv $VIRTUAL_ENV
-ENV PATH "$VIRTUAL_ENV/bin:$PATH"
-
-RUN python3 -m pip install --upgrade pip && pip install --no-cache-dir --upgrade -r /opt/requirements.txt
-
-RUN pip3 install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
+RUN python -m pip install --upgrade pip && pip install -r /opt/requirements.txt
 
 COPY /examples /opt/examples
 COPY /src /opt/src
@@ -43,4 +35,4 @@ COPY *.py *.png /opt/
 
 ENV RUN_ENV=docker
 
-CMD ["python3", "app.py"]
+CMD ["python", "app.py"]

@@ -12,6 +12,13 @@ services:
       - ${API_PORT}:${API_PORT}
     depends_on:
       - sadtalker-redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
   sadtalker-redis:
     image: 'redis:latest'
     volumes:
@@ -33,6 +40,13 @@ services:
     depends_on:
       - sadtalker
       - sadtalker-redis
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   redis:
