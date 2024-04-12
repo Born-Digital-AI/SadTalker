@@ -4,7 +4,7 @@ from pydub import AudioSegment
 from rq import get_current_job
 import logging as log
 
-from src.utils.b64 import base64_to_image
+from src.utils.b64 import base64_to_image, base64_to_audio, path_to_base64
 from src.utils.email_sender import EmailSender
 from src.utils.blob_storage import BlobStorage
 from src.utils.preprocess import CropAndExtract
@@ -36,15 +36,19 @@ class SadTalker():
         self.checkpoint_path = checkpoint_path
         self.config_path = config_path
 
-    def test(self, source_image, driven_audio, preprocess='crop',
+    def test(self, source_img_b64, driven_audio_b64, preprocess='crop',
              still_mode=False, use_enhancer=False, batch_size=1, size=256,
-             pose_style=0, exp_scale=1.0, bg_image=None,
+             pose_style=0, exp_scale=1.0, bg_img_b64=None,
              use_ref_video=False,
              ref_video=None,
              ref_info=None,
              use_idle_mode=False,
              length_of_audio=0, use_blink=True,
              result_dir='./results/'):
+
+        source_image = base64_to_image(source_img_b64)
+        bg_image = base64_to_image(bg_img_b64)
+        driven_audio = base64_to_audio(driven_audio_b64)
 
         self.sadtalker_paths = init_path(self.checkpoint_path, self.config_path, size, False, preprocess)
         log.info(self.sadtalker_paths)
@@ -161,7 +165,7 @@ class SadTalker():
         import gc;
         gc.collect()
 
-        return return_path
+        return path_to_base64(return_path)
 
     def generate_avatar(self, source_img_b64,
                         bg_img_b64,

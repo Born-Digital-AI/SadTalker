@@ -26,10 +26,44 @@ def base64_to_image(input_str):
         return None
 
 
-def image_to_base64(image_path):
+def base64_to_audio(input_str):
     try:
-        with open(image_path, 'rb') as image_file:
-            return base64.b64encode(image_file.read()).decode()
+        if ';base64,' in input_str:
+            _, base64_str = input_str.split(';base64,')
+        else:
+            base64_str = input_str
+
+        binary_data = base64.b64decode(base64_str)
+
+        tmpfile = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+        tmpfile.write(binary_data)
+        return tmpfile.name
+    except Exception as e:
+        print(f"The input is neither a valid file path nor a base64 string. Error: {e}")
+        return None
+
+
+def base64_to_video(input_str):
+    try:
+        if ';base64,' in input_str:
+            _, base64_str = input_str.split(';base64,')
+        else:
+            base64_str = input_str
+
+        binary_data = base64.b64decode(base64_str)
+
+        tmpfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        tmpfile.write(binary_data)
+        return tmpfile.name
+    except Exception as e:
+        print(f"The input is neither a valid file path nor a base64 string. Error: {e}")
+        return None
+
+
+def path_to_base64(file_path):
+    try:
+        with open(file_path, 'rb') as f:
+            return base64.b64encode(f.read()).decode()
     except:
-        print(f"The input is not a valid image_path, received {image_path}")
+        print(f"The input is not a valid file path, received {file_path}")
         return None

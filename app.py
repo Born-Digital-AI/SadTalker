@@ -2,6 +2,7 @@ import os
 import asyncio
 import re
 import logging as log
+import time
 
 from fastapi import FastAPI
 import uvicorn
@@ -13,7 +14,7 @@ from rq_dashboard_fast import RedisQueueDashboard
 
 from src.api.models import GenerateRequest
 from src.gradio_demo import SadTalker
-from src.utils.b64 import image_to_base64
+from src.utils.b64 import path_to_base64, base64_to_video
 
 try:
     import webui  # in webui
@@ -54,8 +55,8 @@ def gen_avatar_job(source_image,
                    exp_scale,
                    email):
     if email and is_valid_email(email):
-        source_img_b64 = image_to_base64(source_image)
-        bg_img_b64 = image_to_base64(bg_image)
+        source_img_b64 = path_to_base64(source_image)
+        bg_img_b64 = path_to_base64(bg_image)
 
         job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
                         exp_scale, email, result_ttl=86400, job_timeout='10h')
@@ -64,10 +65,50 @@ def gen_avatar_job(source_image,
             visible=True), gr.Button(interactive=False)
     else:
         error_message = "Please enter a valid email address."
-        return gr.Markdown(f"<div><p style='color: red;'>{error_message}</p></div>", visible=True), gr.Button(interactive=True)
+        return gr.Markdown(f"<div><p style='color: red;'>{error_message}</p></div>", visible=True), gr.Button(
+            interactive=True)
 
 
-def sadtalker_demo(sad_talker):
+def gen_test_video(source_image,
+                   driven_audio,
+                   preprocess_type,
+                   is_still_mode,
+                   enhancer,
+                   batch_size,
+                   size_of_image,
+                   pose_style,
+                   exp_scale,
+                   bg_image):
+    source_img_b64 = path_to_base64(source_image)
+    bg_img_b64 = path_to_base64(bg_image)
+    driven_audio_b64 = path_to_base64(driven_audio)
+
+    job = q.enqueue(sad_talker.test,
+                    source_img_b64,
+                    driven_audio_b64,
+                    preprocess_type,
+                    is_still_mode,
+                    enhancer,
+                    batch_size,
+                    size_of_image,
+                    pose_style,
+                    exp_scale,
+                    bg_img_b64, result_ttl=86400, job_timeout='1h')
+
+    while True:
+        time.sleep(5)
+        result = job.latest_result()
+        if result:
+            if result.return_value:
+                vid_path = base64_to_video(result.return_value)
+                log.info(f'Video saved to: {vid_path}')
+                return vid_path
+            else:
+                log.error(f'Exception: {result.exc_string}')
+                raise Exception(f'Job failed with error: {result.exc_string}')
+
+
+def sadtalker_demo():
     with (gr.Blocks(analytics_enabled=False, title="Avatar Generator 😎",
                     theme="gradio/monochrome") as sadtalker_interface):
         with gr.Row():
@@ -126,7 +167,7 @@ def sadtalker_demo(sad_talker):
                         job_result = gr.Markdown(visible=False)
 
         test.click(
-            fn=sad_talker.test,
+            fn=gen_test_video,
             inputs=[
                 source_image,
                 driven_audio,
@@ -176,7 +217,7 @@ if __name__ == "__main__":
     log.info(f"Application running on port {GRADIO_PORT}")
 
     sad_talker = SadTalker(checkpoint_path='checkpoints', config_path='src/config', lazy_load=True)
-    demo = sadtalker_demo(sad_talker)
+    demo = sadtalker_demo()
     demo.queue()
 
     app = FastAPI()
