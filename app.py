@@ -118,20 +118,20 @@ def sadtalker_demo():
         with gr.Row():
             with gr.Column(variant='panel'):
                 with gr.Tabs(elem_id="sadtalker_source_image"):
-                    with gr.TabItem('Upload image'):
+                    with gr.TabItem('Source image'):
                         with gr.Row():
-                            source_image = gr.Image(label="Source image", sources=["upload"], type="filepath",
+                            source_image = gr.Image(label="Upload image in 1:1 ratio", sources=["upload"], type="filepath",
                                                     elem_id="img2img_image", width=512)
                 with gr.Tabs(elem_id="sadtalker_bg_image"):
-                    with gr.TabItem('Upload background image'):
+                    with gr.TabItem('Background image'):
                         with gr.Row():
-                            bg_image = gr.Image(label="Background image", sources=["upload"], type="filepath",
+                            bg_image = gr.Image(label="Upload image in 16:9 or 3:4 ratio", sources=["upload"], type="filepath",
                                                 elem_id="img2img_bg_image", width=512)
 
                 with gr.Tabs(elem_id="sadtalker_driven_audio"):
-                    with gr.TabItem('Upload OR TTS'):
+                    with gr.TabItem('Input audio'):
                         with gr.Column(variant='panel'):
-                            driven_audio = gr.Audio(label="Input audio", sources=["upload", "microphone"],
+                            driven_audio = gr.Audio(label="Upload wav audio or use microphone", sources=["upload", "microphone"],
                                                     type="filepath")
 
             with gr.Column(variant='panel'):
@@ -140,10 +140,10 @@ def sadtalker_demo():
                         with gr.Column(variant='panel'):
                             pose_style = gr.Slider(minimum=0, maximum=46, step=1, label="Pose style", value=0,
                                                    visible=False)  #
-                            size_of_image = gr.Radio([256, 512], value=256, label='face model resolution',
-                                                     info="use 256/512 model?")  #
+                            size_of_image = gr.Radio([256, 512], value=256, label='Face model resolution',
+                                                     info="Use 256/512 model?")  #
                             preprocess_type = gr.Radio(['resize', 'full', 'crop', 'extcrop', 'extfull'], value='resize',
-                                                       label='preprocess', info="How to handle input image?")
+                                                       label='Preprocess', info="How to handle input image?")
                             is_still_mode = gr.Checkbox(
                                 label="Still Mode (fewer head motion, works with preprocess `full`)", value=True)
                             batch_size = gr.Slider(label="batch size in generation", step=1, maximum=10, value=2,
