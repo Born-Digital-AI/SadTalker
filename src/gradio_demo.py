@@ -192,7 +192,7 @@ class SadTalker():
         audio_dir = './examples/custom/audio'
         result_dir = f'./examples/custom/result/{job_id}'
         output_dir = './examples/custom/out'
-        batch_size = os.environ.get('BATCH_SIZE', 2)
+        batch_size = int(os.environ.get('BATCH_SIZE', '2'))
 
         os.makedirs(result_dir, exist_ok=True)
         os.makedirs(output_dir, exist_ok=True)
