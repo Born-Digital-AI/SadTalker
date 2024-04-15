@@ -5,7 +5,7 @@
 2. Fill the necessary env variables
 3. `docker-compose up -d --build`
 
-If you want to run the application on a CPU instead of Nvidia GPU, use the Dockerfile_cpu instead.
+If you want to run the application on a CPU instead of Nvidia GPU, use the Dockerfile_cpu instead and delete the deploy specification in docker-compose.yaml
 
 ## Build:
 `docker buildx build --platform linux/amd64 -t borndigitalaibot/sadtalker:0.0.1 --push .`
