@@ -13,9 +13,14 @@ yacs==0.1.8
 pyyaml  
 joblib==1.1.0
 scikit-image==0.19.3
-basicsr==1.4.2
 facexlib==0.3.0
-gradio
+gradio==4.25.0
+cython
 gfpgan
 av
 safetensors
+python-dotenv
+rq
+rq_dashboard_fast
+azure-storage-blob
+-e git+https://github.com/smetak13/BasicSR.git#egg=basicsr
