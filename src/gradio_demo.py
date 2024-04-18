@@ -1,5 +1,7 @@
 import torch, uuid
 import os, shutil
+import string
+import random
 from pydub import AudioSegment
 from rq import get_current_job
 import logging as log
@@ -18,6 +20,12 @@ from src.utils.init_path import init_path
 def mp3_to_wav(mp3_filename, wav_filename, frame_rate):
     mp3_file = AudioSegment.from_file(file=mp3_filename)
     mp3_file.set_frame_rate(frame_rate).export(wav_filename, format="wav")
+
+
+def gen_random_avatar_name(orig_avatar_name, length=4):
+    letters_and_digits = string.ascii_lowercase + string.digits
+    suffix = ''.join(random.choice(letters_and_digits) for _ in range(length))
+    return f'{orig_avatar_name}-{suffix}'
 
 
 class SadTalker():
@@ -172,16 +180,20 @@ class SadTalker():
                         preprocess_type,
                         is_still_mode,
                         exp_scale,
-                        email):
+                        email,
+                        avatar_name):
         job = get_current_job()
         job_id = job.id
 
         job.meta['job_id'] = job_id
         job.meta['email'] = email
+        job.meta['avatar_name'] = avatar_name
         job.meta['preprocess_type'] = preprocess_type
         job.meta['is_still_mode'] = is_still_mode
         job.meta['exp_scale'] = exp_scale
         job.save_meta()
+
+        blob_storage = BlobStorage()
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
@@ -191,48 +203,54 @@ class SadTalker():
 
         audio_dir = './examples/custom/audio'
         result_dir = f'./examples/custom/result/{job_id}'
-        output_dir = './examples/custom/out'
+
+        if blob_storage.check_dir_exists(avatar_name):
+            orig_avatar_name = avatar_name
+            avatar_name = gen_random_avatar_name(avatar_name)
+            log.warning(f'Avatar with name: {orig_avatar_name} already exists, changing name to: {avatar_name}')
+
         batch_size = int(os.environ.get('BATCH_SIZE', '2'))
 
         os.makedirs(result_dir, exist_ok=True)
-        os.makedirs(output_dir, exist_ok=True)
 
         for audio in os.listdir(audio_dir):
             audio_path = os.path.join(audio_dir, audio)
             audio_name = os.path.splitext(audio)[0]
+            video_path = f'{result_dir}/{audio_name}.mp4'
 
             log.info(f'Generating video for audio {audio}')
             cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
-            log.info(f'Video generated and saved to {result_dir}/{audio_name}.mp4')
+            log.info(f'Video generated and saved to {video_path}')
+
+            blob_storage.upload_file(video_path, avatar_name)
+            log.info(f'Video {video_path} uploaded to storage')
 
         log.info(f'Generating default video')
         default_vid_name = 'default-video.mp4'
+        video_path = f'{result_dir}/{default_vid_name}'
         cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 30'
         os.system(cmd)
         log.info(f'Default video generated and saved to {result_dir}/{default_vid_name}')
+        blob_storage.upload_file(video_path, avatar_name)
+        log.info(f'Video {video_path} uploaded to storage')
 
-        output_filename = f'{output_dir}/{job_id}'
-        shutil.make_archive(output_filename, 'zip', result_dir)
-        log.info(f'Archive created at {output_filename}.zip')
-
-        blob_storage = BlobStorage()
-        blob_storage.upload_file(f'{output_filename}.zip', job_id)
-        download_url = blob_storage.get_file_url()
+        dh_face_base_uri = os.environ.get('DH_FACE_BASE_URI')
+        dh_face_url = f'{dh_face_base_uri}?name={avatar_name}'
 
         email_sender = EmailSender()
-        subject = 'Link to your avatar videos'
+        subject = 'Link to your avatar!'
         html_body = f"""
                 <html>
                 <body>
                     <h1>Hello there,</h1>
-                    <p>Your avatar videos are ready! 🎉</p>
-                    <p>You can download them by clicking the link below:</p>
-                    <a href="{download_url}" target="_blank">Download Videos</a>
+                    <p>Your avatar is ready! 🎉</p>
+                    <p>Click the link below to try it out:</p>
+                    <a href="{dh_face_url}" target="_blank">Try Avatar</a>
                     <p>Enjoy your new avatar! 🤖</p>
                 </body>
                 </html>
                 """
         email_sender.send(subject, html_body, [email])
 
-        return download_url
+        return dh_face_url

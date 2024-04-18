@@ -11,7 +11,15 @@ class BlobStorage:
         self.connection_string = AZURE_STORAGE_CONN_STRING
         self.container_name = AZURE_STORAGE_CONTAINER
         self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+        self.container_client = self.blob_service_client.get_container_client(self.container_name)
         self.blob_client = None
+
+    def check_dir_exists(self, dir_name):
+        blob_list = self.container_client.list_blobs(name_starts_with=dir_name)
+
+        for _ in blob_list:
+            return True
+        return False
 
     def upload_file(self, file_path, directory):
         self.blob_client = self.blob_service_client.get_blob_client(self.container_name,
