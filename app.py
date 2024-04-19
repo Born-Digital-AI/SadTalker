@@ -42,8 +42,15 @@ def ref_video_fn(path_of_ref_video):
 
 
 def is_valid_email(email):
-    email_regex = "^([a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3})$"
+    email_regex = r"^([a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3})$"
     if re.search(email_regex, email):
+        return True
+    return False
+
+
+def is_valid_av_name(name):
+    name_regex = r"^[A-Za-z0-9\-]+$"
+    if re.search(name_regex, name):
         return True
     return False
 
@@ -55,19 +62,26 @@ def gen_avatar_job(source_image,
                    exp_scale,
                    email,
                    avatar_name):
-    if email and is_valid_email(email) and avatar_name:
-        source_img_b64 = path_to_base64(source_image)
-        bg_img_b64 = path_to_base64(bg_image)
 
-        job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
-                        exp_scale, email, avatar_name, result_ttl=86400, job_timeout='10h')
-        return gr.Markdown(
-            f"<div> <p style='color: #A3A3A3; margin: 5px 0'> Avatar generation started! 🥳 </p> <p style='color: #A3A3A3; margin: 5px 0'> We will send you a link to your email when the avatar is generated. </p> <p style='color: #A3A3A3; margin: 5px 0'> You can track the progress <a href='{API_BASE_URI}/rq/job/{job.get_id()}' target='_blank'> <b>here</b> </a> </p> </div>",
-            visible=True), gr.Button(interactive=False)
-    else:
-        error_message = "Please fill out the required fields."
+    if not avatar_name or not is_valid_av_name(avatar_name):
+        error_message = "Please enter a valid avatar name (letters, digits, hyphen)."
         return gr.Markdown(f"<div><p style='color: red;'>{error_message}</p></div>", visible=True), gr.Button(
             interactive=True)
+
+    if not email or not is_valid_email(email):
+        error_message = "Please enter a valid email address."
+        return gr.Markdown(f"<div><p style='color: red;'>{error_message}</p></div>", visible=True), gr.Button(
+            interactive=True)
+
+    source_img_b64 = path_to_base64(source_image)
+    bg_img_b64 = path_to_base64(bg_image)
+
+    job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
+                    exp_scale, email, avatar_name, result_ttl=86400, job_timeout='24h')
+    return gr.Markdown(
+        f"<div> <p style='color: #A3A3A3; margin: 5px 0'> Avatar generation started! 🥳 </p> <p style='color: #A3A3A3; margin: 5px 0'> We will send you a link to your email when the avatar is generated. </p> <p style='color: #A3A3A3; margin: 5px 0'> You can track the progress <a href='{API_BASE_URI}/rq/job/{job.get_id()}' target='_blank'> <b>here</b> </a> </p> </div>",
+        visible=True), gr.Button(interactive=False)
+
 
 
 def gen_test_video(source_image,
@@ -94,7 +108,7 @@ def gen_test_video(source_image,
                     size_of_image,
                     pose_style,
                     exp_scale,
-                    bg_img_b64, result_ttl=86400, job_timeout='1h')
+                    bg_img_b64, result_ttl=86400, job_timeout='2h')
 
     while True:
         time.sleep(5)
@@ -121,18 +135,21 @@ def sadtalker_demo():
                 with gr.Tabs(elem_id="sadtalker_source_image"):
                     with gr.TabItem('Source image'):
                         with gr.Row():
-                            source_image = gr.Image(label="Upload image in 1:1 ratio", sources=["upload"], type="filepath",
+                            source_image = gr.Image(label="Upload image in 1:1 ratio", sources=["upload"],
+                                                    type="filepath",
                                                     elem_id="img2img_image", width=512)
                 with gr.Tabs(elem_id="sadtalker_bg_image"):
                     with gr.TabItem('Background image'):
                         with gr.Row():
-                            bg_image = gr.Image(label="Upload image in 16:9 or 3:4 ratio", sources=["upload"], type="filepath",
+                            bg_image = gr.Image(label="Upload image in 16:9 or 3:4 ratio", sources=["upload"],
+                                                type="filepath",
                                                 elem_id="img2img_bg_image", width=512)
 
                 with gr.Tabs(elem_id="sadtalker_driven_audio"):
                     with gr.TabItem('Input audio'):
                         with gr.Column(variant='panel'):
-                            driven_audio = gr.Audio(label="Upload wav audio or use microphone", sources=["upload", "microphone"],
+                            driven_audio = gr.Audio(label="Upload wav audio or use microphone",
+                                                    sources=["upload", "microphone"],
                                                     type="filepath")
 
             with gr.Column(variant='panel'):
@@ -162,7 +179,8 @@ def sadtalker_demo():
                     with gr.TabItem('Generate avatar'):
                         gr.Markdown(
                             "<div <p style='color: #A3A3A3;'>When you are happy with the test video, generate a complete avatar. The result will be sent to your email.</p> </div>")
-                        avatar_name = gr.Textbox(label="Avatar name", type="text", placeholder="Choose a name for your avatar", max_lines=1)
+                        avatar_name = gr.Textbox(label="Avatar name", type="text",
+                                                 placeholder="Choose a name for your avatar", max_lines=1)
                         email = gr.Textbox(label="Email", type="email", placeholder="Input your email", max_lines=1)
                         generate_btn = gr.Button('Generate Avatar', elem_id="generate_btn", variant='primary',
                                                  interactive=True)
@@ -254,7 +272,7 @@ if __name__ == "__main__":
         email = r.email
 
         job = q.enqueue(sad_talker.generate_avatar, source_img_b64, bg_img_b64, preprocess_type, is_still_mode,
-                        exp_scale, email, result_ttl=86400, job_timeout='10h')
+                        exp_scale, email, result_ttl=86400, job_timeout='24h')
 
         return {"job_id": job.get_id()}
 
