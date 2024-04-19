@@ -229,7 +229,7 @@ class SadTalker():
         log.info(f'Generating default video')
         default_vid_name = 'default-video.mp4'
         video_path = f'{result_dir}/{default_vid_name}'
-        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 30'
+        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
         os.system(cmd)
         log.info(f'Default video generated and saved to {result_dir}/{default_vid_name}')
         blob_storage.upload_file(video_path, avatar_name)
