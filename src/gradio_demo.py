@@ -235,7 +235,7 @@ class SadTalker():
         blob_storage.upload_file(video_path, avatar_name)
         log.info(f'Video {video_path} uploaded to storage')
 
-        dh_face_base_uri = os.environ.get('DH_FACE_BASE_URI')
+        dh_face_base_uri = os.environ.get('DH_FACE_BASE_URI', 'https://customer-test.borndigital.ai/digital-human/')
         dh_face_url = f'{dh_face_base_uri}?name={avatar_name}'
 
         email_sender = EmailSender()
