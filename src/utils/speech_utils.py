@@ -10,7 +10,7 @@ def get_audio_len_sec(audio_path):
 
 def get_speech_start_sec(audio_path):
     audio = AudioSegment.from_file(audio_path)
-    nonsilent_data = detect_nonsilent(audio, min_silence_len=200, silence_thresh=-16)
+    nonsilent_data = detect_nonsilent(audio, min_silence_len=1, silence_thresh=-16)
     first_nonsilent_part = nonsilent_data[0] if nonsilent_data else None
 
     if first_nonsilent_part:
