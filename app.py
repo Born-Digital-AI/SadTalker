@@ -91,7 +91,7 @@ def gen_avatar_job(
         exp_scale,
         email,
         avatar_name,
-        result_ttl=86400,
+        result_ttl=-1,
         job_timeout="24h",
     )
     return gr.Markdown(
@@ -455,6 +455,7 @@ if __name__ == "__main__":
         is_still_mode = r.is_still_mode
         exp_scale = r.exp_scale
         email = r.email
+        avatar_name = r.avatar_name
 
         job = q.enqueue(
             sad_talker.generate_avatar,
@@ -464,7 +465,8 @@ if __name__ == "__main__":
             is_still_mode,
             exp_scale,
             email,
-            result_ttl=86400,
+            avatar_name,
+            result_ttl=-1,
             job_timeout="24h",
         )
 
