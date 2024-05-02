@@ -378,7 +378,7 @@ class SadTalker:
                 config_dict = {
                     "name": f"{audio_name}.mp4",
                     "speech_start": speech_start,
-                    "speech_duration": audio_duration - speech_start,
+                    "speech_duration": round(audio_duration - speech_start, 2),
                     "video_duration": audio_duration,
                     "pregenerated_text": transcript_text,
                     "audio_file": f"{audio_name}.wav",
