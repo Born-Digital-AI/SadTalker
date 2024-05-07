@@ -78,6 +78,9 @@ definitions:
       email:
         type: "string"
         description: "email where the link to the generated avatar will be sent"
+      avatar_name:
+        type: "string"
+        description: "unique name of avatar to be generated"
       preprocess_type:
         type: "string"
         enum: ["resize", "full", "crop", "extcrop", "extfull"]
@@ -91,6 +94,7 @@ definitions:
     required:
     - source_image
     - email
+    - avatar_name
     - preprocess_type
     - is_still_mode
     - exp_scale
