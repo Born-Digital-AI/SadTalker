@@ -25,10 +25,10 @@ def mp3_to_wav(mp3_filename, wav_filename, frame_rate):
     mp3_file.set_frame_rate(frame_rate).export(wav_filename, format="wav")
 
 
-def gen_random_avatar_name(orig_avatar_name, length=4):
+def gen_random_suffix(length=4):
     letters_and_digits = string.ascii_lowercase + string.digits
     suffix = "".join(random.choice(letters_and_digits) for _ in range(length))
-    return f"{orig_avatar_name}-{suffix}"
+    return suffix
 
 
 class SadTalker:
@@ -262,7 +262,7 @@ class SadTalker:
 
         if blob_storage.check_dir_exists(avatar_name):
             orig_avatar_name = avatar_name
-            avatar_name = gen_random_avatar_name(avatar_name)
+            avatar_name = f"{avatar_name}-{gen_random_suffix()}"
             log.warning(
                 f"Avatar with name: {orig_avatar_name} already exists, changing name to: {avatar_name}"
             )
@@ -375,6 +375,21 @@ class SadTalker:
                 audio_duration = get_audio_len_sec(audio_path)
 
                 transcript_text = file.read()
+
+                for cfg_video in config_videos:
+                    if cfg_video["name"] == f"{audio_name}.mp4":
+                        audio_name = f"{audio_name}-{gen_random_suffix()}"
+                        log.warning(
+                            f"There is already a video named {cfg_video['name']}, changing name to {audio_name}"
+                        )
+                        break
+
+                config_videos = [
+                    cfg_video
+                    for cfg_video in config_videos
+                    if cfg_video["pregenerated_text"] != transcript_text
+                ]
+
                 config_dict = {
                     "name": f"{audio_name}.mp4",
                     "speech_start": speech_start,
