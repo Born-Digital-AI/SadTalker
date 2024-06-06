@@ -62,8 +62,8 @@ class SadTalker:
         exp_scale=1.0,
         bg_img_b64=None,
         use_ref_video=False,
-        ref_video=None,
-        ref_info=None,
+        ref_video_b64=None,
+        ref_info="blink",
         use_idle_mode=False,
         length_of_audio=0,
         use_blink=True,
@@ -118,6 +118,7 @@ class SadTalker:
             assert use_ref_video == True and ref_info == "all"
 
         if use_ref_video and ref_info == "all":  # full ref mode
+            ref_video = base64_to_path(ref_video_b64, ".mp4")
             ref_video_videoname = os.path.basename(ref_video)
             audio_path = os.path.join(save_dir, ref_video_videoname + ".wav")
             log.info(f"new audiopath: {audio_path}")
@@ -142,6 +143,7 @@ class SadTalker:
 
         if use_ref_video:
             log.info("using ref video for genreation")
+            ref_video = base64_to_path(ref_video_b64, ".mp4")
             ref_video_videoname = os.path.splitext(os.path.split(ref_video)[-1])[0]
             ref_video_frame_dir = os.path.join(save_dir, ref_video_videoname)
             os.makedirs(ref_video_frame_dir, exist_ok=True)
@@ -232,6 +234,7 @@ class SadTalker:
         self,
         source_img_b64,
         bg_img_b64,
+        ref_video_b64,
         preprocess_type,
         is_still_mode,
         exp_scale,
@@ -253,6 +256,7 @@ class SadTalker:
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
+        ref_video = base64_to_path(ref_video_b64, ".mp4")
 
         log.info(f"Source image path: {source_image}")
         log.info(f"Background image path: {bg_image}")
@@ -277,7 +281,7 @@ class SadTalker:
             video_path = f"{result_dir}/{audio_name}.mp4"
 
             log.info(f"Generating video for audio {audio}")
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             log.info(f"Video generated and saved to {video_path}")
 
@@ -287,7 +291,7 @@ class SadTalker:
         log.info(f"Generating default video")
         default_vid_name = "default-video.mp4"
         video_path = f"{result_dir}/{default_vid_name}"
-        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
+        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
         os.system(cmd)
         log.info(
             f"Default video generated and saved to {result_dir}/{default_vid_name}"
@@ -321,6 +325,7 @@ class SadTalker:
         self,
         source_img_b64,
         bg_img_b64,
+        ref_video_b64,
         audios,
         preprocess_type,
         is_still_mode,
@@ -341,6 +346,7 @@ class SadTalker:
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
+        ref_video = base64_to_path(ref_video_b64, ".mp4")
 
         log.info(f"Source image path: {source_image}")
         log.info(f"Background image path: {bg_image}")
@@ -405,7 +411,7 @@ class SadTalker:
             video_path = f"{result_dir}/{audio_name}.mp4"
 
             log.info(f"Generating video for audio {filename}")
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             log.info(f"Video generated and saved to {video_path}")
 
