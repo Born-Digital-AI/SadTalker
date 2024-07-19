@@ -58,6 +58,7 @@ def is_valid_av_name(name):
 def gen_avatar_job(
     source_image,
     bg_image,
+    ref_video,
     preprocess_type,
     is_still_mode,
     exp_scale,
@@ -81,11 +82,13 @@ def gen_avatar_job(
 
     source_img_b64 = path_to_base64(source_image)
     bg_img_b64 = path_to_base64(bg_image)
+    ref_video_b64 = path_to_base64(ref_video)
 
     job = q.enqueue(
         sad_talker.generate_avatar,
         source_img_b64,
         bg_img_b64,
+        ref_video_b64,
         preprocess_type,
         is_still_mode,
         exp_scale,
@@ -103,6 +106,7 @@ def gen_avatar_job(
 def gen_custom_videos_job(
     source_image,
     bg_image,
+    ref_video,
     preprocess_type,
     is_still_mode,
     exp_scale,
@@ -120,6 +124,7 @@ def gen_custom_videos_job(
 
     source_img_b64 = path_to_base64(source_image)
     bg_img_b64 = path_to_base64(bg_image)
+    ref_video_b64 = path_to_base64(ref_video)
 
     audios = []
 
@@ -157,6 +162,7 @@ def gen_custom_videos_job(
         sad_talker.gen_custom_videos,
         source_img_b64,
         bg_img_b64,
+        ref_video_b64,
         audios,
         preprocess_type,
         is_still_mode,
@@ -183,10 +189,13 @@ def gen_test_video(
     pose_style,
     exp_scale,
     bg_image,
+    ref_video,
 ):
     source_img_b64 = path_to_base64(source_image)
     bg_img_b64 = path_to_base64(bg_image)
     driven_audio_b64 = path_to_base64(driven_audio)
+    ref_video_b64 = path_to_base64(ref_video)
+    use_ref_video = True if ref_video_b64 is not None else False
 
     job = q.enqueue(
         sad_talker.test,
@@ -200,6 +209,8 @@ def gen_test_video(
         pose_style,
         exp_scale,
         bg_img_b64,
+        use_ref_video,
+        ref_video_b64,
         result_ttl=86400,
         job_timeout="5h",
     )
@@ -246,6 +257,16 @@ def sadtalker_demo():
                                 sources=["upload"],
                                 type="filepath",
                                 elem_id="img2img_bg_image",
+                                width=512,
+                            )
+                with gr.Tabs(elem_id="sadtalker_ref_video"):
+                    with gr.TabItem("Eyeblink reference video"):
+                        with gr.Row():
+                            ref_video = gr.Video(
+                                label="Upload eyeblink video",
+                                format="mp4",
+                                sources=["upload"],
+                                elem_id="img2img_ref_video",
                                 width=512,
                             )
 
@@ -373,6 +394,7 @@ def sadtalker_demo():
                 pose_style,
                 exp_scale,
                 bg_image,
+                ref_video,
             ],
             outputs=[gen_video],
         )
@@ -382,6 +404,7 @@ def sadtalker_demo():
             inputs=[
                 source_image,
                 bg_image,
+                ref_video,
                 preprocess_type,
                 is_still_mode,
                 exp_scale,
@@ -396,6 +419,7 @@ def sadtalker_demo():
             inputs=[
                 source_image,
                 bg_image,
+                ref_video,
                 preprocess_type,
                 is_still_mode,
                 exp_scale,
@@ -451,6 +475,7 @@ if __name__ == "__main__":
     def generate(r: GenerateRequest):
         source_img_b64 = r.source_image
         bg_img_b64 = r.bg_image if r.bg_image else None
+        ref_video_b64 = r.ref_video if r.ref_video else None
         preprocess_type = r.preprocess_type
         is_still_mode = r.is_still_mode
         exp_scale = r.exp_scale
@@ -461,6 +486,7 @@ if __name__ == "__main__":
             sad_talker.generate_avatar,
             source_img_b64,
             bg_img_b64,
+            ref_video_b64,
             preprocess_type,
             is_still_mode,
             exp_scale,
