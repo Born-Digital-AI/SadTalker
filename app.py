@@ -62,6 +62,7 @@ def gen_avatar_job(
     preprocess_type,
     is_still_mode,
     exp_scale,
+    head_motion_scale,
     email,
     avatar_name,
 ):
@@ -92,6 +93,7 @@ def gen_avatar_job(
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         email,
         avatar_name,
         result_ttl=-1,
@@ -110,6 +112,7 @@ def gen_custom_videos_job(
     preprocess_type,
     is_still_mode,
     exp_scale,
+    head_motion_scale,
     avatar_name,
     uploaded_files,
 ):
@@ -167,6 +170,7 @@ def gen_custom_videos_job(
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         avatar_name,
         result_ttl=86400,
         job_timeout="24h",
@@ -188,6 +192,7 @@ def gen_test_video(
     size_of_image,
     pose_style,
     exp_scale,
+    head_motion_scale,
     bg_image,
     ref_video,
 ):
@@ -208,6 +213,7 @@ def gen_test_video(
         size_of_image,
         pose_style,
         exp_scale,
+        head_motion_scale,
         bg_img_b64,
         use_ref_video,
         ref_video_b64,
@@ -326,6 +332,13 @@ def sadtalker_demo():
                                 label="Expression scale",
                                 value=1.0,
                             )
+                            head_motion_scale = gr.Slider(
+                                minimum=0.1,
+                                maximum=2.0,
+                                step=0.1,
+                                label="Head motion scale",
+                                value=1.0,
+                            )
                             test = gr.Button(
                                 "Test", elem_id="sadtalker_test", variant="secondary"
                             )
@@ -393,6 +406,7 @@ def sadtalker_demo():
                 size_of_image,
                 pose_style,
                 exp_scale,
+                head_motion_scale,
                 bg_image,
                 ref_video,
             ],
@@ -408,6 +422,7 @@ def sadtalker_demo():
                 preprocess_type,
                 is_still_mode,
                 exp_scale,
+                head_motion_scale,
                 email,
                 avatar_name,
             ],
@@ -423,6 +438,7 @@ def sadtalker_demo():
                 preprocess_type,
                 is_still_mode,
                 exp_scale,
+                head_motion_scale,
                 av_name,
                 uploaded_files,
             ],
@@ -479,6 +495,7 @@ if __name__ == "__main__":
         preprocess_type = r.preprocess_type
         is_still_mode = r.is_still_mode
         exp_scale = r.exp_scale
+        head_motion_scale = r.head_motion_scale
         email = r.email
         avatar_name = r.avatar_name
 
@@ -490,6 +507,7 @@ if __name__ == "__main__":
             preprocess_type,
             is_still_mode,
             exp_scale,
+            head_motion_scale,
             email,
             avatar_name,
             result_ttl=-1,

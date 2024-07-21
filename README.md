@@ -78,6 +78,9 @@ definitions:
       email:
         type: "string"
         description: "email where the link to the generated avatar will be sent"
+      ref_video:
+        type: "string"
+        description: "base64 string of the eyeblink reference video"
       avatar_name:
         type: "string"
         description: "unique name of avatar to be generated"
@@ -91,6 +94,10 @@ definitions:
         type: "number"
         format: "float"
         description: "The expression scale (determines emotions and movement of the avatar)"
+      head_motion_scale:
+        type: "number"
+        format: "float"
+        description: "The head motion scale (determines movement of the avatar's head)"
     required:
     - source_image
     - email
@@ -98,4 +105,5 @@ definitions:
     - preprocess_type
     - is_still_mode
     - exp_scale
+    - head_motion_scale  
 ````

@@ -26,3 +26,4 @@ class GenerateRequest(BaseModel):
     preprocess_type: PreprocessType
     is_still_mode: bool
     exp_scale: float
+    head_motion_scale: float

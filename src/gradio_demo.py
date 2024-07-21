@@ -60,6 +60,7 @@ class SadTalker:
         size=256,
         pose_style=0,
         exp_scale=1.0,
+        head_motion_scale=1.0,
         bg_img_b64=None,
         use_ref_video=False,
         ref_video_b64=None,
@@ -202,6 +203,7 @@ class SadTalker:
             preprocess=preprocess,
             size=size,
             expression_scale=exp_scale,
+            head_motion_scale=head_motion_scale,
         )
         return_path = self.animate_from_coeff.generate(
             data,
@@ -238,6 +240,7 @@ class SadTalker:
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         email,
         avatar_name,
     ):
@@ -250,6 +253,7 @@ class SadTalker:
         job.meta["preprocess_type"] = preprocess_type
         job.meta["is_still_mode"] = is_still_mode
         job.meta["exp_scale"] = exp_scale
+        job.meta["head_motion_scale"] = head_motion_scale
         job.save_meta()
 
         blob_storage = BlobStorage()
@@ -281,7 +285,7 @@ class SadTalker:
             video_path = f"{result_dir}/{audio_name}.mp4"
 
             log.info(f"Generating video for audio {audio}")
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             log.info(f"Video generated and saved to {video_path}")
 
@@ -291,7 +295,7 @@ class SadTalker:
         log.info(f"Generating default video")
         default_vid_name = "default-video.mp4"
         video_path = f"{result_dir}/{default_vid_name}"
-        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
+        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
         os.system(cmd)
         log.info(
             f"Default video generated and saved to {result_dir}/{default_vid_name}"
@@ -330,6 +334,7 @@ class SadTalker:
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         avatar_name,
     ):
         job = get_current_job()
@@ -340,6 +345,7 @@ class SadTalker:
         job.meta["preprocess_type"] = preprocess_type
         job.meta["is_still_mode"] = is_still_mode
         job.meta["exp_scale"] = exp_scale
+        job.meta["head_motion_scale"] = head_motion_scale
         job.save_meta()
 
         blob_storage = BlobStorage()
@@ -411,7 +417,7 @@ class SadTalker:
             video_path = f"{result_dir}/{audio_name}.mp4"
 
             log.info(f"Generating video for audio {filename}")
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             log.info(f"Video generated and saved to {video_path}")
 
