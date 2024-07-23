@@ -16,8 +16,11 @@ class GenerateRequest(BaseModel):
     bg_image: Optional[str] = Field(
         None, description="base64 string of the background image"
     )
-    ref_video: Optional[str] = Field(
+    ref_blink: Optional[str] = Field(
         None, description="base64 string of the eyeblink reference video"
+    )
+    ref_pose: Optional[str] = Field(
+        None, description="base64 string of the pose reference video"
     )
     email: str = Field(
         ..., description="email where the link to the generated avatar will be sent"

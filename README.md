@@ -78,9 +78,12 @@ definitions:
       email:
         type: "string"
         description: "email where the link to the generated avatar will be sent"
-      ref_video:
+      ref_blink:
         type: "string"
         description: "base64 string of the eyeblink reference video"
+      ref_pose:
+        type: "string"
+        description: "base64 string of the pose reference video"
       avatar_name:
         type: "string"
         description: "unique name of avatar to be generated"
