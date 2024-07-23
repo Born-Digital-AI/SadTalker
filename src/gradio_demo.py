@@ -74,7 +74,7 @@ class SadTalker:
         ref_pose = base64_to_path(ref_pose_b64, ".mp4")
         audio_path = base64_to_path(audio_b64_str, ".wav")
 
-        result_dir = "./results/"
+        result_dir = "./results"
 
         video_path = f"{result_dir}/{job_id}.mp4"
 
