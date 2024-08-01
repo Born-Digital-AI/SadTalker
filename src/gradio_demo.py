@@ -52,192 +52,48 @@ class SadTalker:
     def test(
         self,
         source_img_b64,
-        driven_audio_b64,
-        preprocess="crop",
-        still_mode=False,
-        use_enhancer=False,
+        audio_b64_str,
+        preprocess_type="crop",
+        is_still_mode=False,
+        enhancer=True,
         batch_size=1,
         size=256,
         pose_style=0,
         exp_scale=1.0,
+        head_motion_scale=1.0,
         bg_img_b64=None,
-        use_ref_video=False,
-        ref_video_b64=None,
-        ref_info="blink",
-        use_idle_mode=False,
-        length_of_audio=0,
-        use_blink=True,
-        result_dir="./results/",
+        ref_blink_b64=None,
+        ref_pose_b64=None,
     ):
+        job = get_current_job()
+        job_id = job.id
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
-        driven_audio = base64_to_path(driven_audio_b64, ".wav")
+        ref_blink = base64_to_path(ref_blink_b64, ".mp4")
+        ref_pose = base64_to_path(ref_pose_b64, ".mp4")
+        audio_path = base64_to_path(audio_b64_str, ".wav")
 
-        self.sadtalker_paths = init_path(
-            self.checkpoint_path, self.config_path, size, False, preprocess
-        )
-        log.info(self.sadtalker_paths)
+        result_dir = "./results"
 
-        self.audio_to_coeff = Audio2Coeff(self.sadtalker_paths, self.device)
-        self.preprocess_model = CropAndExtract(self.sadtalker_paths, self.device)
-        self.animate_from_coeff = AnimateFromCoeff(self.sadtalker_paths, self.device)
+        video_path = f"{result_dir}/{job_id}.mp4"
 
-        time_tag = str(uuid.uuid4())
-        save_dir = os.path.join(result_dir, time_tag)
-        os.makedirs(save_dir, exist_ok=True)
+        cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_blink}" if ref_blink else ""}{f" --ref_pose {ref_pose}" if ref_pose else ""} --final_vid_name {job_id}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size {size}{f" --enhancer gfpgan" if enhancer else ""}'
+        os.system(cmd)
+        log.info(f"Video generated and saved to {video_path}")
 
-        input_dir = os.path.join(save_dir, "input")
-        os.makedirs(input_dir, exist_ok=True)
-
-        log.info(source_image)
-        pic_path = os.path.join(input_dir, os.path.basename(source_image))
-        shutil.move(source_image, input_dir)
-
-        if driven_audio is not None and os.path.isfile(driven_audio):
-            audio_path = os.path.join(input_dir, os.path.basename(driven_audio))
-
-            #### mp3 to wav
-            if ".mp3" in audio_path:
-                mp3_to_wav(driven_audio, audio_path.replace(".mp3", ".wav"), 16000)
-                audio_path = audio_path.replace(".mp3", ".wav")
-            else:
-                shutil.copy(driven_audio, input_dir)
-
-        elif use_idle_mode:
-            audio_path = os.path.join(
-                input_dir, "idlemode_" + str(length_of_audio) + ".wav"
-            )  ## generate audio from this new audio_path
-            from pydub import AudioSegment
-
-            one_sec_segment = AudioSegment.silent(
-                duration=1000 * length_of_audio
-            )  # duration in milliseconds
-            one_sec_segment.export(audio_path, format="wav")
-        else:
-            assert use_ref_video == True and ref_info == "all"
-
-        if use_ref_video and ref_info == "all":  # full ref mode
-            ref_video = base64_to_path(ref_video_b64, ".mp4")
-            ref_video_videoname = os.path.basename(ref_video)
-            audio_path = os.path.join(save_dir, ref_video_videoname + ".wav")
-            log.info(f"new audiopath: {audio_path}")
-            # if ref_video contains audio, set the audio from ref_video.
-            cmd = r"ffmpeg -y -hide_banner -loglevel error -i %s %s" % (
-                ref_video,
-                audio_path,
-            )
-            os.system(cmd)
-
-        os.makedirs(save_dir, exist_ok=True)
-
-        # crop image and extract 3dmm from image
-        first_frame_dir = os.path.join(save_dir, "first_frame_dir")
-        os.makedirs(first_frame_dir, exist_ok=True)
-        first_coeff_path, crop_pic_path, crop_info = self.preprocess_model.generate(
-            pic_path, first_frame_dir, preprocess, True, size
-        )
-
-        if first_coeff_path is None:
-            raise AttributeError("No face is detected")
-
-        if use_ref_video:
-            log.info("using ref video for genreation")
-            ref_video = base64_to_path(ref_video_b64, ".mp4")
-            ref_video_videoname = os.path.splitext(os.path.split(ref_video)[-1])[0]
-            ref_video_frame_dir = os.path.join(save_dir, ref_video_videoname)
-            os.makedirs(ref_video_frame_dir, exist_ok=True)
-            log.info("3DMM Extraction for the reference video providing pose")
-            ref_video_coeff_path, _, _ = self.preprocess_model.generate(
-                ref_video, ref_video_frame_dir, preprocess, source_image_flag=False
-            )
-        else:
-            ref_video_coeff_path = None
-
-        if use_ref_video:
-            if ref_info == "pose":
-                ref_pose_coeff_path = ref_video_coeff_path
-                ref_eyeblink_coeff_path = None
-            elif ref_info == "blink":
-                ref_pose_coeff_path = None
-                ref_eyeblink_coeff_path = ref_video_coeff_path
-            elif ref_info == "pose+blink":
-                ref_pose_coeff_path = ref_video_coeff_path
-                ref_eyeblink_coeff_path = ref_video_coeff_path
-            elif ref_info == "all":
-                ref_pose_coeff_path = None
-                ref_eyeblink_coeff_path = None
-            else:
-                raise ("error in refinfo")
-        else:
-            ref_pose_coeff_path = None
-            ref_eyeblink_coeff_path = None
-
-        # audio2ceoff
-        if use_ref_video and ref_info == "all":
-            coeff_path = ref_video_coeff_path  # self.audio_to_coeff.generate(batch, save_dir, pose_style, ref_pose_coeff_path)
-        else:
-            batch = get_data(
-                first_coeff_path,
-                audio_path,
-                self.device,
-                ref_eyeblink_coeff_path=ref_eyeblink_coeff_path,
-                still=still_mode,
-                idlemode=use_idle_mode,
-                length_of_audio=length_of_audio,
-                use_blink=use_blink,
-            )  # longer audio?
-            coeff_path = self.audio_to_coeff.generate(
-                batch, save_dir, pose_style, ref_pose_coeff_path
-            )
-
-        # coeff2video
-        data = get_facerender_data(
-            coeff_path,
-            crop_pic_path,
-            first_coeff_path,
-            audio_path,
-            batch_size,
-            still_mode=still_mode,
-            preprocess=preprocess,
-            size=size,
-            expression_scale=exp_scale,
-        )
-        return_path = self.animate_from_coeff.generate(
-            data,
-            save_dir,
-            pic_path,
-            crop_info,
-            enhancer="gfpgan" if use_enhancer else None,
-            preprocess=preprocess,
-            img_size=size,
-            bg_image=bg_image,
-        )
-        video_name = data["video_name"]
-        log.info(f"The generated video is named {video_name} in {save_dir}")
-
-        del self.preprocess_model
-        del self.audio_to_coeff
-        del self.animate_from_coeff
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-            torch.cuda.synchronize()
-
-        import gc
-
-        gc.collect()
-
-        return path_to_base64(return_path)
+        return path_to_base64(video_path)
 
     def generate_avatar(
         self,
         source_img_b64,
         bg_img_b64,
-        ref_video_b64,
+        ref_blink_b64,
+        ref_pose_b64,
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         email,
         avatar_name,
     ):
@@ -250,13 +106,15 @@ class SadTalker:
         job.meta["preprocess_type"] = preprocess_type
         job.meta["is_still_mode"] = is_still_mode
         job.meta["exp_scale"] = exp_scale
+        job.meta["head_motion_scale"] = head_motion_scale
         job.save_meta()
 
         blob_storage = BlobStorage()
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
-        ref_video = base64_to_path(ref_video_b64, ".mp4")
+        ref_blink = base64_to_path(ref_blink_b64, ".mp4")
+        ref_pose = base64_to_path(ref_pose_b64, ".mp4")
 
         log.info(f"Source image path: {source_image}")
         log.info(f"Background image path: {bg_image}")
@@ -281,7 +139,7 @@ class SadTalker:
             video_path = f"{result_dir}/{audio_name}.mp4"
 
             log.info(f"Generating video for audio {audio}")
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_blink}" if ref_blink else ""}{f" --ref_pose {ref_pose}" if ref_pose else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             log.info(f"Video generated and saved to {video_path}")
 
@@ -291,7 +149,7 @@ class SadTalker:
         log.info(f"Generating default video")
         default_vid_name = "default-video.mp4"
         video_path = f"{result_dir}/{default_vid_name}"
-        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
+        cmd = f'python inference.py --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_blink}" if ref_blink else ""}{f" --ref_pose {ref_pose}" if ref_pose else ""} --final_vid_name {default_vid_name}{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan --idlemode --len 20'
         os.system(cmd)
         log.info(
             f"Default video generated and saved to {result_dir}/{default_vid_name}"
@@ -325,11 +183,13 @@ class SadTalker:
         self,
         source_img_b64,
         bg_img_b64,
-        ref_video_b64,
+        ref_blink_b64,
+        ref_pose_b64,
         audios,
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         avatar_name,
     ):
         job = get_current_job()
@@ -340,13 +200,15 @@ class SadTalker:
         job.meta["preprocess_type"] = preprocess_type
         job.meta["is_still_mode"] = is_still_mode
         job.meta["exp_scale"] = exp_scale
+        job.meta["head_motion_scale"] = head_motion_scale
         job.save_meta()
 
         blob_storage = BlobStorage()
 
         source_image = base64_to_image(source_img_b64)
         bg_image = base64_to_image(bg_img_b64)
-        ref_video = base64_to_path(ref_video_b64, ".mp4")
+        ref_blink = base64_to_path(ref_blink_b64, ".mp4")
+        ref_pose = base64_to_path(ref_pose_b64, ".mp4")
 
         log.info(f"Source image path: {source_image}")
         log.info(f"Background image path: {bg_image}")
@@ -411,7 +273,7 @@ class SadTalker:
             video_path = f"{result_dir}/{audio_name}.mp4"
 
             log.info(f"Generating video for audio {filename}")
-            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_video}" if ref_video else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
+            cmd = f'python inference.py --driven_audio {audio_path} --source_image {source_image} --result_dir {result_dir}{f" --bg_image {bg_image}" if bg_image else ""}{f" --ref_eyeblink {ref_blink}" if ref_blink else ""}{f" --ref_pose {ref_pose}" if ref_pose else ""} --final_vid_name {audio_name}.mp4{" --still" if is_still_mode else ""} --preprocess {preprocess_type} --expression_scale {exp_scale} --head_motion_scale {head_motion_scale} --batch_size {batch_size} --size 512 --enhancer gfpgan'
             os.system(cmd)
             log.info(f"Video generated and saved to {video_path}")
 

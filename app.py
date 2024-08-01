@@ -58,10 +58,12 @@ def is_valid_av_name(name):
 def gen_avatar_job(
     source_image,
     bg_image,
-    ref_video,
+    ref_blink,
+    ref_pose,
     preprocess_type,
     is_still_mode,
     exp_scale,
+    head_motion_scale,
     email,
     avatar_name,
 ):
@@ -82,16 +84,19 @@ def gen_avatar_job(
 
     source_img_b64 = path_to_base64(source_image)
     bg_img_b64 = path_to_base64(bg_image)
-    ref_video_b64 = path_to_base64(ref_video)
+    ref_blink_b64 = path_to_base64(ref_blink)
+    ref_pose_b64 = path_to_base64(ref_pose)
 
     job = q.enqueue(
         sad_talker.generate_avatar,
         source_img_b64,
         bg_img_b64,
-        ref_video_b64,
+        ref_blink_b64,
+        ref_pose_b64,
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         email,
         avatar_name,
         result_ttl=-1,
@@ -106,10 +111,12 @@ def gen_avatar_job(
 def gen_custom_videos_job(
     source_image,
     bg_image,
-    ref_video,
+    ref_blink,
+    ref_pose,
     preprocess_type,
     is_still_mode,
     exp_scale,
+    head_motion_scale,
     avatar_name,
     uploaded_files,
 ):
@@ -124,7 +131,8 @@ def gen_custom_videos_job(
 
     source_img_b64 = path_to_base64(source_image)
     bg_img_b64 = path_to_base64(bg_image)
-    ref_video_b64 = path_to_base64(ref_video)
+    ref_blink_b64 = path_to_base64(ref_blink)
+    ref_pose_b64 = path_to_base64(ref_pose)
 
     audios = []
 
@@ -162,11 +170,13 @@ def gen_custom_videos_job(
         sad_talker.gen_custom_videos,
         source_img_b64,
         bg_img_b64,
-        ref_video_b64,
+        ref_blink_b64,
+        ref_pose_b64,
         audios,
         preprocess_type,
         is_still_mode,
         exp_scale,
+        head_motion_scale,
         avatar_name,
         result_ttl=86400,
         job_timeout="24h",
@@ -188,14 +198,16 @@ def gen_test_video(
     size_of_image,
     pose_style,
     exp_scale,
+    head_motion_scale,
     bg_image,
-    ref_video,
+    ref_blink,
+    ref_pose,
 ):
     source_img_b64 = path_to_base64(source_image)
     bg_img_b64 = path_to_base64(bg_image)
     driven_audio_b64 = path_to_base64(driven_audio)
-    ref_video_b64 = path_to_base64(ref_video)
-    use_ref_video = True if ref_video_b64 is not None else False
+    ref_blink_b64 = path_to_base64(ref_blink)
+    ref_pose_b64 = path_to_base64(ref_pose)
 
     job = q.enqueue(
         sad_talker.test,
@@ -208,9 +220,10 @@ def gen_test_video(
         size_of_image,
         pose_style,
         exp_scale,
+        head_motion_scale,
         bg_img_b64,
-        use_ref_video,
-        ref_video_b64,
+        ref_blink_b64,
+        ref_pose_b64,
         result_ttl=86400,
         job_timeout="5h",
     )
@@ -262,11 +275,20 @@ def sadtalker_demo():
                 with gr.Tabs(elem_id="sadtalker_ref_video"):
                     with gr.TabItem("Eyeblink reference video"):
                         with gr.Row():
-                            ref_video = gr.Video(
+                            ref_blink = gr.Video(
                                 label="Upload eyeblink video",
                                 format="mp4",
                                 sources=["upload"],
-                                elem_id="img2img_ref_video",
+                                elem_id="img2img_ref_blink",
+                                width=512,
+                            )
+                    with gr.TabItem("Pose reference video"):
+                        with gr.Row():
+                            ref_pose = gr.Video(
+                                label="Upload pose video",
+                                format="mp4",
+                                sources=["upload"],
+                                elem_id="img2img_ref_pose",
                                 width=512,
                             )
 
@@ -324,6 +346,13 @@ def sadtalker_demo():
                                 maximum=2.0,
                                 step=0.1,
                                 label="Expression scale",
+                                value=1.0,
+                            )
+                            head_motion_scale = gr.Slider(
+                                minimum=0.1,
+                                maximum=2.0,
+                                step=0.1,
+                                label="Head motion scale",
                                 value=1.0,
                             )
                             test = gr.Button(
@@ -393,8 +422,10 @@ def sadtalker_demo():
                 size_of_image,
                 pose_style,
                 exp_scale,
+                head_motion_scale,
                 bg_image,
-                ref_video,
+                ref_blink,
+                ref_pose,
             ],
             outputs=[gen_video],
         )
@@ -404,10 +435,12 @@ def sadtalker_demo():
             inputs=[
                 source_image,
                 bg_image,
-                ref_video,
+                ref_blink,
+                ref_pose,
                 preprocess_type,
                 is_still_mode,
                 exp_scale,
+                head_motion_scale,
                 email,
                 avatar_name,
             ],
@@ -419,10 +452,12 @@ def sadtalker_demo():
             inputs=[
                 source_image,
                 bg_image,
-                ref_video,
+                ref_blink,
+                ref_pose,
                 preprocess_type,
                 is_still_mode,
                 exp_scale,
+                head_motion_scale,
                 av_name,
                 uploaded_files,
             ],
@@ -475,10 +510,12 @@ if __name__ == "__main__":
     def generate(r: GenerateRequest):
         source_img_b64 = r.source_image
         bg_img_b64 = r.bg_image if r.bg_image else None
-        ref_video_b64 = r.ref_video if r.ref_video else None
+        ref_blink_b64 = r.ref_blink if r.ref_blink else None
+        ref_pose_b64 = r.ref_pose if r.ref_pose else None
         preprocess_type = r.preprocess_type
         is_still_mode = r.is_still_mode
         exp_scale = r.exp_scale
+        head_motion_scale = r.head_motion_scale
         email = r.email
         avatar_name = r.avatar_name
 
@@ -486,10 +523,12 @@ if __name__ == "__main__":
             sad_talker.generate_avatar,
             source_img_b64,
             bg_img_b64,
-            ref_video_b64,
+            ref_blink_b64,
+            ref_pose_b64,
             preprocess_type,
             is_still_mode,
             exp_scale,
+            head_motion_scale,
             email,
             avatar_name,
             result_ttl=-1,
