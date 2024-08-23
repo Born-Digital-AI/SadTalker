@@ -55,7 +55,9 @@ def get_facerender_data(
 
     # target
     generated_3dmm[:, :64] = generated_3dmm[:, :64] * expression_scale
-    generated_3dmm[:, 64:] = generated_3dmm[:, 64:] * head_motion_scale
+
+    if head_motion_scale != 1.0:
+        generated_3dmm[:, 64:] = generated_3dmm[:, 64:] * head_motion_scale
 
     if "full" in preprocess.lower():
         generated_3dmm = np.concatenate(
